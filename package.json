@@ -1,5 +1,5 @@
 {
-  "name": "demoday-frontend-team02",
+  "name": "13-demoday-frontend-team02",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.5",
-    "axios": "^1.13.1",
+    "@tanstack/react-query": "^5.90.7",
+    "@tanstack/react-query-devtools": "^5.90.2",
+    "axios": "^1.13.2",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -18,10 +19,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@tanstack/react-query-devtools": "^5.90.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
     "tailwindcss": "^4",
