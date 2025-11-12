@@ -1,75 +1,158 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useMemo, useState } from "react";
 
-export default function EmailJoinPage() {
-  const [name, setName] = useState('홍길동');
-  const [email, setEmail] = useState('ID@dtour.com');
-  const [pw, setPw] = useState('');
-  const [pw2, setPw2] = useState('');
-  const [allAgree, setAllAgree] = useState(false);
+type AgreeKeys = "age14" | "terms" | "privacy" | "birthUse" | "marketing";
+const REQUIRED: AgreeKeys[] = ["age14", "terms", "privacy"];
 
-  const pwInvalid  = pw.length > 0  && (pw.length < 8 || pw.length > 15);
-  const pw2Invalid = pw2.length > 0 && pw2 !== pw;
+export default function JoinPage() {
+  const [agree, setAgree] = useState<Record<AgreeKeys, boolean>>({
+    age14: false,
+    terms: false,
+    privacy: false,
+    birthUse: false,
+    marketing: false,
+  });
+
+  const allChecked = useMemo(() => Object.values(agree).every(Boolean), [agree]);
+  const requiredChecked = useMemo(() => REQUIRED.every((k) => agree[k]), [agree]);
+
+  const toggleAll = () => {
+    const next = !allChecked;
+    setAgree({
+      age14: next,
+      terms: next,
+      privacy: next,
+      birthUse: next,
+      marketing: next,
+    });
+  };
+  const toggleOne = (k: AgreeKeys) => setAgree((s) => ({ ...s, [k]: !s[k] }));
 
   return (
-    <main className="auth-page">
-      <div className="auth-card">
-        <h1 className="auth-title">이메일로 회원가입</h1>
+    <main className="min-h-screen w-full flex justify-center px-4 py-10">
+      <div className="w-full max-w-md">
+        {/* 제목 */}
+        <h1 className="text-[24px] text-center mb-8">
+          이메일로 회원가입
+        </h1>
 
-        <div style={{ display: 'grid', gap: 16 }}>
-          <div>
-            <label className="label">이름*</label>
-            <input className="input" value={name} onChange={e => setName(e.target.value)} placeholder="홍길동" />
-          </div>
+        {/* 입력 필드: 필드 간 16px */}
+        <form className="space-y-4">
+          <FormInput label="이름(닉네임)*" placeholder="홍길동" />
+          <FormInput label="출생년도 입력*" placeholder="정보를 입력해주세요" />
+          <FormInput label="이메일주소*" placeholder="ID@dtour.com" />
+          <FormInput
+            label="비밀번호*"
+            placeholder="영문, 숫자, 특수문자 2가지 조합 8~15자"
+            type="password"
+          />
+          <FormInput
+            label="비밀번호 확인*"
+            placeholder="비밀번호를 한 번 더 입력해주세요."
+            type="password"
+          />
+        </form>
 
-          <div>
-            <label className="label">이메일주소*</label>
-            <input className="input" value={email} onChange={e => setEmail(e.target.value)} placeholder="ID@dtour.com" />
-          </div>
-
-          <div>
-            <label className="label">비밀번호*</label>
+        {/* 동의 섹션: 위 24px 간격 */}
+        <section className="mt-6 md:mt-8">
+          {/* 전체동의: 아래 12px 간격 */}
+          <label className="flex items-center gap-2 mb-3">
             <input
-              className={`input ${pwInvalid ? 'input-error' : ''}`}
-              type="password"
-              value={pw}
-              onChange={e => setPw(e.target.value)}
-              placeholder="영문, 숫자, 특수문자 2가지 조합 8~15자"
+              type="checkbox"
+              checked={allChecked}
+              onChange={toggleAll}
+              className="h-4 w-4"
             />
-            {pwInvalid && <div className="help-error">비밀번호 규칙을 확인해주세요.</div>}
-          </div>
+            <span className="text-[14px] font-medium text-gray-900">
+              전체동의하기
+            </span>
+          </label>
 
-          <div>
-            <label className="label">비밀번호 확인*</label>
-            <input
-              className={`input ${pw2Invalid ? 'input-error' : ''}`}
-              type="password"
-              value={pw2}
-              onChange={e => setPw2(e.target.value)}
-              placeholder="비밀번호를 한 번 더 입력해주세요"
+          {/* 유의사항 3줄: 12px, gray-300 확실히 적용 */}
+          <p className="text-[12px] !text-gray-300 leading-relaxed mb-3">
+            비밀번호를 한 번 더 입력해주세요. <br />
+            선택 정보에 대한 동의를 포함합니다. 전체 동의하기를 선택 후 선택
+            항목에 대한 동의를 해제하실 수 있습니다.
+          </p>
+
+          {/* 개별 동의 박스: 14px, 테두리 박스, 내부 줄 간 8px */}
+          <div className="border border-gray-300 rounded-md p-3 space-y-2">
+            <AgreeItem
+              label="[필수] 만 14세 이상입니다"
+              checked={agree.age14}
+              onChange={() => toggleOne("age14")}
             />
-            {pw2Invalid && <div className="help-error">비밀번호가 일치하지 않습니다.</div>}
+            <AgreeItem
+              label="[필수] 이용약관에 동의합니다"
+              checked={agree.terms}
+              onChange={() => toggleOne("terms")}
+            />
+            <AgreeItem
+              label="[필수] 개인정보 처리방침에 동의합니다"
+              checked={agree.privacy}
+              onChange={() => toggleOne("privacy")}
+            />
+            <AgreeItem
+              label="[선택] 출생년도 동의하기"
+              checked={agree.birthUse}
+              onChange={() => toggleOne("birthUse")}
+            />
+            <AgreeItem
+              label="[선택] 마케팅 수신 동의"
+              checked={agree.marketing}
+              onChange={() => toggleOne("marketing")}
+            />
           </div>
+        </section>
 
-          <div className="check-row" style={{ marginTop: 4 }}>
-            <input id="all" type="checkbox" checked={allAgree} onChange={e => setAllAgree(e.target.checked)} />
-            <label htmlFor="all" style={{ fontWeight: 700 }}>전체동의하기</label>
-          </div>
-          <div className="help">
-            비밀번호를 한 번 더 입력해주세요. 전체 동의하기를 선택할 경우 선택적 동의에도 동의한 것으로 처리될 수 있습니다.
-          </div>
-
-          <div className="terms-box">
-            <label className="check-row"><input type="checkbox" /> [필수] 만 14세 이상입니다</label>
-            <label className="check-row"><input type="checkbox" /> [필수] 만 14세 이상입니다</label>
-            <label className="check-row"><input type="checkbox" /> [필수] 만 14세 이상입니다</label>
-            <label className="check-row"><input type="checkbox" /> [선택] 마케팅 수신 동의</label>
-          </div>
-
-          <button className="btn-cta">가입완료하기</button>
+        {/* CTA: 위 24px 간격, global .btn-yellow 사용 + disabled 유틸 */}
+        <div className="mt-6 md:mt-8 flex justify-center">
+          <button
+            type="button"
+            disabled={!requiredChecked}
+            className={`btn-yellow disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            가입완료하기
+          </button>
         </div>
       </div>
     </main>
+  );
+}
+
+/* 입력 컴포넌트 */
+function FormInput({
+  label,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[14px] text-gray-800">{label}</span>
+      <input className="input-field mt-2" type={type} placeholder={placeholder} />
+    </label>
+  );
+}
+
+/* 체크박스 한 줄 */
+function AgreeItem({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className="flex items-center gap-2">
+      <input type="checkbox" className="h-4 w-4" checked={checked} onChange={onChange} />
+      <span className="text-[14px] text-gray-800">{label}</span>
+    </label>
   );
 }

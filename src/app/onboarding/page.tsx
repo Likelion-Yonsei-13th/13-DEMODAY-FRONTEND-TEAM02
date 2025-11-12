@@ -1,148 +1,144 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import { useEffect, useRef, useState } from 'react';
-
-/**
- * 요구사항
- * 1) 진입 시 Splash가 먼저 보이고, 화면을 터치/클릭하면 다음(온보딩)으로 전환
- * 2) 온보딩 3장은 이미지 영역을 좌/우 슬라이드로 이동(스와이프 지원)
- */
-
-const SLIDES = [
-  {
-    title: '로컬들이 짜주는\n내 맞춤 여행 코스!',
-    img: '/onboarding1.png',
-  },
-  {
-    title: '우리 지역 명소를\n여행객에게 알려주고 싶다!',
-    img: '/onboarding2.png',
-  },
-  {
-    title: '시간도 남는데,\n우리 지역 여행 가이드를 해볼까?',
-    img: '/onboarding3.png',
-  },
-];
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Pagination } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/pagination";
 
 export default function OnboardingPage() {
-  const [phase, setPhase] = useState<'splash' | 'onboarding'>('splash');
-  const [index, setIndex] = useState(0);
+  const [step, setStep] = useState<1 | 2>(1);
 
-  // === Splash: 첫 화면에서 아무 곳이나 터치/클릭 시 온보딩으로 ===
-  const handleSplashProceed = () => setPhase('onboarding');
-
-  // === 슬라이더 터치/드래그 구현 ===
-  const startX = useRef<number | null>(null);
-  const currentX = useRef<number>(0);
-  const dragging = useRef(false);
-  const trackRef = useRef<HTMLDivElement | null>(null);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    dragging.current = true;
-    startX.current = e.clientX;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragging.current || startX.current === null) return;
-    currentX.current = e.clientX - startX.current;
-    const px = -index * window.innerWidth + currentX.current;
-    if (trackRef.current) {
-      trackRef.current.style.transition = 'none';
-      trackRef.current.style.transform = `translateX(${px}px)`;
-    }
-  };
-
-  const onPointerUp = () => {
-    if (!dragging.current) return;
-    dragging.current = false;
-
-    const dx = currentX.current;
-    const threshold = Math.min(120, window.innerWidth * 0.2); // 스와이프 임계값
-    let next = index;
-
-    if (dx > threshold) next = Math.max(0, index - 1);
-    else if (dx < -threshold) next = Math.min(SLIDES.length - 1, index + 1);
-
-    setIndex(next);
-
-    // 원위치/스냅
-    requestAnimationFrame(() => {
-      if (trackRef.current) {
-        trackRef.current.style.transition = 'transform .35s ease';
-        trackRef.current.style.transform = `translateX(-${next * 100}vw)`;
-      }
-    });
-
-    // 값 초기화
-    startX.current = null;
-    currentX.current = 0;
-  };
-
-  // 인덱스 변경 시 스냅 보장
-  useEffect(() => {
-    if (trackRef.current) {
-      trackRef.current.style.transition = 'transform .35s ease';
-      trackRef.current.style.transform = `translateX(-${index * 100}vw)`;
-    }
-  }, [index]);
-
-  if (phase === 'splash') {
+  if (step === 1) {
     return (
-      <section className="splash" onClick={handleSplashProceed} onTouchEnd={handleSplashProceed}>
-        <h1 className="splash-title">D tour</h1>
-        <div className="splash-footer">버전정보</div>
-      </section>
+      <main
+        role="button"
+        tabIndex={0}
+        onClick={() => setStep(2)}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setStep(2)}
+        className="min-h-screen bg-brand flex flex-col items-center justify-between text-white cursor-pointer select-none"
+        aria-label="화면을 터치하여 다음으로 이동"
+      >
+        <div />
+        <h1 className="text-[40px] font-bold leading-tight text-center">D-tour</h1>
+        <p className="text-[18px] opacity-90 pb-8">버전정보</p>
+      </main>
     );
   }
 
-  // === Onboarding (3장 슬라이드) ===
+  // ✅ 2, 3, 4번째 온보딩 슬라이드
   return (
-    <section className="ob-wrap">
-      {/* 슬라이더 영역 */}
-      <div
-        className="ob-viewport"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      >
-        <div ref={trackRef} className="ob-track" style={{ transform: `translateX(-${index * 100}vw)` }}>
-          {SLIDES.map((s, i) => (
-            <div key={i} className="ob-slide">
-              {/* 상단 도트 */}
-              <div className="ob-dots" aria-hidden>
-                <span className={i === 0 ? 'is-active' : ''} />
-                <span className={i === 1 ? 'is-active' : ''} />
-                <span className={i === 2 ? 'is-active' : ''} />
-              </div>
+    <main className="min-h-screen flex flex-col">
+      <div className="flex-1">
+        <Swiper
+          modules={[Pagination]}
+          pagination={{ clickable: true }}
+          spaceBetween={24}
+          className="h-full onboarding-swiper"
+        >
+          <SwiperSlide>
+            <Slide
+              titleTop="로컬들이 짜주는"
+              titleBottom="내 맞춤 여행 코스!"
+              img="/onboarding1.png"
+              alt="맞춤 여행 코스 화면"
+            />
+          </SwiperSlide>
 
-              {/* 타이틀 */}
-              <p className="ob-title whitespace-pre-line">{s.title}</p>
+          <SwiperSlide>
+            <Slide
+              titleTop="우리 지역 명소를"
+              titleBottom="여행객에게 알려주고 싶다!"
+              img="/onboarding2.png"
+              alt="지역 명소 소개 화면"
+            />
+          </SwiperSlide>
 
-              {/* 이미지 박스 (슬라이드의 핵심 영역) */}
-              <div style={{ width: 260, display: 'flex', justifyContent: 'center' }}>
-                <Image
-                  src={s.img}
-                  alt="onboarding preview"
-                  width={260}
-                  height={520}
-                  priority={i === 0}
-                  style={{ height: 'auto' }}
-                />
-              </div>
+          <SwiperSlide>
+            <Slide
+              titleTop="시간도 남는데,"
+              titleBottom="우리 지역 여행 가이드를 해볼까?"
+              img="/onboarding3.png"
+              alt="여행 가이드 화면"
+            />
+          </SwiperSlide>
+        </Swiper>
+      </div>
 
-              {/* CTA 버튼 2개 (고정) */}
-              <div style={{ display: 'grid', gap: 12, placeItems: 'center', marginTop: 8 }}>
-                <button className="btn-cta">여행자로 시작하기</button>
-                <button className="btn-cta">로컬로 시작하기</button>
-              </div>
-            </div>
-          ))}
+      {/* ✅ 하단 CTA */}
+      <div className="sticky bottom-0 z-10 w-full bg-white/70 backdrop-blur px-4 pb-6 pt-0">
+        <div className="mx-auto max-w-md flex flex-col items-center gap-[13px]">
+          <Link href="/auth?role=traveler" className="btn-yellow">
+            여행자로 시작하기
+          </Link>
+          <Link href="/auth?role=local" className="btn-yellow">
+            로컬로 시작하기
+          </Link>
         </div>
       </div>
 
-      
+      {/* ✅ Swiper 페이지 점 (상단 위치, 회색/검정, 여백 조정) */}
+      <style jsx global>{`
+        .onboarding-swiper {
+          padding-top: 60px; /* 상단 여백 (점 위쪽) */
+        }
+        .onboarding-swiper
+          .swiper-horizontal
+          > .swiper-pagination-bullets,
+        .onboarding-swiper
+          .swiper-pagination-bullets.swiper-pagination-horizontal {
+          top: 18px; /* 점 표시 간격 */
+          bottom: auto;
+          width: 100%;
+        }
+        .onboarding-swiper .swiper-pagination-bullet {
+          background: #6c6c6c !important;
+          opacity: 1 !important;
+          box-shadow: 0 4px 4px rgba(0, 0, 0, 0.1);
+        }
+        .onboarding-swiper .swiper-pagination-bullet-active {
+          background: #000 !important;
+        }
+      `}</style>
+    </main>
+  );
+}
+
+/* =========================== 슬라이드 컴포넌트 =========================== */
+function Slide({
+  titleTop,
+  titleBottom,
+  img,
+  alt,
+}: {
+  titleTop: string;
+  titleBottom: string;
+  img: string;
+  alt: string;
+}) {
+  return (
+    <section className="flex h-full flex-col items-center">
+      {/* 1️⃣ 점 밑 간격  →  타이틀 (24px) */}
+      <h2 className="mt-[42px] text-center leading-tight text-[24px] font-semibold text-gray-900">
+        {titleTop}
+        <br />
+        {titleBottom}
+      </h2>
+
+      {/* 2️⃣ 타이틀 밑 간격 → 이미지 */}
+      <div className="relative mt-[24px] w-full max-w-sm h-[400px]">
+        <Image
+          src={img}
+          alt={alt}
+          fill
+          priority
+          sizes="(max-width:768px) 90vw, 400px"
+          className="object-contain"
+        />
+      </div>
+      {/* 이미지와 버튼 사이 간격 최소화 */}
     </section>
   );
 }
