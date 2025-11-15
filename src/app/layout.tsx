@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body className={roboto.className + " min-h-screen"}>{children}</body>
+      <body className={roboto.className + " min-h-screen overflow-x-hidden"}>
+        {children}
+      </body>
     </html>
   );
 }
