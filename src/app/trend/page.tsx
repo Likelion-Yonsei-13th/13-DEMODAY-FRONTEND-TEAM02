@@ -17,7 +17,7 @@ export default function TrendPage() {
           </p>
 
           <div className="mt-3 space-y-2">
-            <div className="relative h-[133px] w-full overflow-hidden rounded-[10px] bg-gray-300 overflow-hidden">
+            <div className="relative h-[133px] w-full overflow-hidden rounded-[10px] bg-gray-300">
               <Image
                 src="/megazine.png"
                 alt="매거진 1"
@@ -28,10 +28,10 @@ export default function TrendPage() {
 
               <div className="absolute left-5 bottom-5">
                 <p className="text-[15px] font-semibold text-white drop-shadow">
-                    11월 첫째주 여행 TREND
+                  11월 첫째주 여행 TREND
                 </p>
                 <p className="text-[12px] font-medium text-white opacity-80 drop-shadow">
-                    #단풍 #핫플 #동궁과월지 #종로 #일본감성
+                  #단풍 #핫플 #동궁과월지 #종로 #일본감성
                 </p>
               </div>
             </div>
@@ -46,14 +46,13 @@ export default function TrendPage() {
               />
               <div className="absolute left-5 bottom-5">
                 <p className="text-[15px] font-semibold text-white drop-shadow">
-                    11월 첫째주 여행 TREND
+                  11월 첫째주 여행 TREND
                 </p>
                 <p className="text-[12px] font-medium text-white opacity-80 drop-shadow">
-                    #전시회 #팝업 #뮤지컬
+                  #전시회 #팝업 #뮤지컬
                 </p>
               </div>
             </div>
-            
           </div>
         </div>
 
@@ -69,12 +68,13 @@ export default function TrendPage() {
               { rank: "Top2", label: "장소" },
               { rank: "Top3", label: "테마" },
               { rank: "Top4", label: "동네" },
-            ].map((row, idx) => (
+            ].map((row) => (
               <div
                 key={row.rank}
-                className={`flex h-[24px] items-center text-[14px] mt-[10px]`}
+                className="mt-[10px] flex h-[24px] items-center text-[14px]"
                 style={{
-                    background: "linear-gradient(90deg, #F9D040 0%, #FFF0BB 100%)",
+                  background:
+                    "linear-gradient(90deg, #F9D040 0%, #FFF0BB 100%)",
                 }}
               >
                 <div className="flex w-[56px] items-center justify-center font-semibold">
@@ -87,22 +87,13 @@ export default function TrendPage() {
         </div>
 
         {/* 최근 제안요청이 많은 장소 */}
-        <TrendCardSection
-          title="최근 제안요청이 많은 장소"
-          subtitle="최근 제안요청이 많이 들어온 여행지들을 모았어요."
-        />
+        <TrendCardSection title="최근 제안요청이 많은 장소" />
 
         {/* 최근 조회수가 많은 제안서 */}
-        <TrendCardSection
-          title="최근 조회수가 많은 제안서"
-          subtitle="많은 여행자들이 보고 있는 제안서예요."
-        />
+        <TrendCardSection title="최근 조회수가 많은 제안서" />
 
-        {/* 최근 채팅이 많이 된 로컬 */}
-        <TrendCardSection
-          title="최근 채팅이 많이 된 로컬"
-          subtitle="요즘 가장 활발하게 활동 중인 로컬들이에요."
-        />
+        {/* ✅ 최근 채택이 많이 된 로컬 (디자인 다른 섹션) */}
+        <TrendLocalSection title="최근 채택이 많이 된 로컬" />
       </section>
 
       {/* 하단 고정 내비게이션 */}
@@ -111,7 +102,7 @@ export default function TrendPage() {
   );
 }
 
-/* ===== 재사용 섹션 컴포넌트 ===== */
+/* ===== 공통 카드 섹션 ===== */
 
 type TrendCardSectionProps = {
   title: string;
@@ -119,7 +110,7 @@ type TrendCardSectionProps = {
 };
 
 function TrendCardSection({ title, subtitle }: TrendCardSectionProps) {
-  const cards = [1, 2, 3]; // 샘플 카드 3개
+  const cards = [1, 2, 3];
 
   return (
     <section className="mb-8">
@@ -144,11 +135,11 @@ function TrendCardSection({ title, subtitle }: TrendCardSectionProps) {
   );
 }
 
-/* ===== 개별 카드 ===== */
+/* ===== 기본 여행지 카드 ===== */
 
 function TrendPlaceCard() {
   return (
-    <article className="w-[300px] overflow-hidden flex-none rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <article className="w-[300px] flex-none overflow-hidden rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
       {/* 이미지 영역 */}
       <div className="relative h-[240px] w-full overflow-hidden">
         <Image
@@ -167,6 +158,52 @@ function TrendPlaceCard() {
       <div className="border-t border-gray-100 px-3 py-3">
         <p className="text-[11px] text-gray-500">이름</p>
         <p className="mt-1 text-[13px] font-semibold text-gray-900">소개글</p>
+      </div>
+    </article>
+  );
+}
+
+/* ===== 최근 채택이 많이 된 로컬 섹션 (디자인 별도) ===== */
+
+type TrendLocalSectionProps = {
+  title: string;
+};
+
+function TrendLocalSection({ title }: TrendLocalSectionProps) {
+  const locals = [1, 2, 3];
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 text-[16px] font-bold text-gray-900">{title}</h2>
+
+      {/* 가로 스크롤: 카드 안에 프로필 + 텍스트만 있는 타입 */}
+      <div className="-mx-5 overflow-x-auto pb-1">
+        <div className="flex gap-4 px-5">
+          {locals.map((i) => (
+            <TrendLocalCard key={i} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ===== 로컬 카드 (동그라미 + 이름/소개글, 패딩 15px) ===== */
+
+function TrendLocalCard() {
+  return (
+    <article className="w-[240px] flex-none rounded-[10px] bg-white">
+      <div className="flex items-center gap-4 px-[15px] py-[15px]">
+        {/* 프로필 동그라미 */}
+        <div className="h-10 w-10 rounded-full bg-[#D9D9D9]" />
+
+        {/* 텍스트 영역 */}
+        <div className="flex flex-col">
+          <span className="text-[12px] text-black">이름</span>
+          <span className="mt-1 text-[16px] text-black">
+            소개글
+          </span>
+        </div>
       </div>
     </article>
   );
