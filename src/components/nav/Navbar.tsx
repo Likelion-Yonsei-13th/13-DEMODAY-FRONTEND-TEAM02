@@ -32,7 +32,9 @@ export default function Navbar() {
                   aria-current={active ? "page" : undefined}
                   className={`group no-underline flex flex-col items-center justify-center gap-1 py-2 select-none text-gray-600`}
                 >
-                  <span className={`absolute -top-1 h-1 w-6 rounded-full bg-brand`} />
+                  {active && (
+                    <span className="absolute -top-1 h-1 w-6 rounded-full bg-brand" />
+                  )}
                   <Image src={t.icon} alt={t.label} width={22} height={22} className="object-contain" />
                   <span className="text-[11px]">{t.label}</span>
                 </Link>
