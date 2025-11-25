@@ -17,31 +17,39 @@ export default function ProposalSendPage() {
     { day: 7, label: "07" }
   ];
 
-  const schedule = {
+  type ScheduleItem = {
+    time: string;
+    order: number;
+    title: string;
+    desc: string;
+    bg: string;
+    };
+
+    const schedule: Record<string, ScheduleItem[]> = {
     "04": [
-      {
+        {
         time: "07:00",
         order: 1,
         title: "한식아침밥",
         desc: "소개글",
         bg: "#FFF3B8",
-      },
-      {
+        },
+        {
         time: "10:00",
         order: 2,
         title: "국중박구경",
         desc: "소개글",
         bg: "#FFF3B8",
-      },
-      {
+        },
+        {
         time: "12:00",
         order: 3,
         title: "",
         desc: "해당 내용을 보려면 포인트가 필요합니다.",
         bg: "#FFE7E7",
-      },
+        },
     ],
-  };
+    };
 
   const scheduleKey = selectedDay.toString().padStart(2, "0");
 
@@ -146,7 +154,10 @@ export default function ProposalSendPage() {
 
         {/* 날짜 아래 입력창 */}
         {openDayModal === selectedDay && (
-        <DayDetailSection day={selectedDay} />
+        <DayDetailSection 
+            day={selectedDay} 
+            onClose={() => setOpenDayModal(null)} 
+        />
         )}
 
         {/* 시간표 */}
