@@ -2,7 +2,12 @@ import Image from "next/image";
 import Navbar from '../components/nav/Navbar';
 import TopHeader from "@/components/TopHeader";
 
-const CATEGORIES = Array.from({ length: 10 }, () => "Text");
+const CATEGORIES = [
+  "서울", "인천", "대전", "대구", "광주",
+  "부산", "경기", "강원", "충청", "세종",
+  "전라도", "경상도", "제주도"
+];
+
 
 const TREND = [
   { id: 1, title: "요즘은 이 공방이 유행!", tag: "서울 공방 TOP 10", img: "/travel.png" },
@@ -17,22 +22,21 @@ const PROPOSALS = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen pb-[88px] bg-[#F4F4F4]">
+    <main className="min-h-screen pb-[88px] bg-white">
       {/* ===== 헤더 ===== */}
 
       <TopHeader />
 
-      {/* ===== 활동 카테고리 ===== */}
+      {/* ===== 지역 카테고리 ===== */}
       <section className="mx-auto w-full max-w-[420px] px-5">
-        <h2 className="text-[16px] font-semibold text-gray-900">활동카테고리</h2>
 
-        <div className="mt-3 rounded-xl bg-[#F7F8FA] p-4">
-          <div className="flex flex-wrap gap-3">
+        <div className="mt-10">
+          <div className="flex flex-wrap gap-3 bg-[#F7F8FA] justify-center py-5">
             {CATEGORIES.map((t, i) => (
               <button
                 key={i}
                 type="button"
-                className="px-4 py-2 rounded-[30px] border border-[#93AAC3] bg-white text-[14px] text-gray-700"
+                className="px-4 py-2 rounded-[30px] border border-[#93AAC3] bg-white text-[14px] text-black"
               >
                 {t}
               </button>
@@ -45,13 +49,6 @@ export default function HomePage() {
       <section className="mx-auto w-full max-w-[420px] px-5 mt-6">
         <div className="flex items-center justify-between">
           <h3 className="text-[20px] font-bold text-gray-900">Trend</h3>
-          <button
-            type="button"
-            className="h-9 w-9 rounded-full border border-gray-300 bg-white grid place-items-center"
-            aria-label="추가"
-          >
-            +
-          </button>
         </div>
 
         <div className="mt-3 overflow-x-auto">
@@ -90,7 +87,7 @@ export default function HomePage() {
       <section className="mx-auto w-full max-w-[420px] px-5 mt-8">
         <div className="flex items-center justify-between">
           <h3 className="text-[20px] font-bold text-gray-900">로컬&apos;s 제안서</h3>
-          <button className="text-[12px] text-gray-500" type="button">
+          <button className="text-[12px] border-b border-gray-500 text-gray-500" type="button">
             실시간 제안서 더보기
           </button>
         </div>

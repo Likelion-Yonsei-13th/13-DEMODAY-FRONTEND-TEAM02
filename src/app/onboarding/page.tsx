@@ -59,7 +59,7 @@ export default function OnboardingPage() {
           <SwiperSlide>
             <Slide
               titleTop="시간도 남는데,"
-              titleBottom="우리 지역 여행 가이드를 해볼까?"
+              titleBottom="우리 지역 여행 제안을 해볼까?"
               img="/onboarding3.png"
               alt="여행 가이드 화면"
             />
