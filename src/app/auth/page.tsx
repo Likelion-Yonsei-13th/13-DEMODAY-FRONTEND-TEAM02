@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function AuthIntroPage() {
+  const searchParams = useSearchParams();
+  const role = searchParams.get("role"); // "traveler" 또는 "local"
+
   return (
     <main className="relative min-h-screen">
       {/* 배경 이미지 */}
@@ -20,8 +24,8 @@ export default function AuthIntroPage() {
         {/* 버튼 스택 */}
         <div className="flex flex-col items-center gap-[13px]">
           {[
-            { text: "가입하기", href: "/auth/join" },
-            { text: "인스타 계정으로 가입하기" },
+            { text: "가입하기", href: role ? `/auth/join?role=${role}` : "/auth/join" },
+            { text: "로그인하기", href: role ? `/auth/login?role=${role}` : "/auth/login" },
             { text: "인스타 계정으로 가입하기" },
           ].map((btn, idx) =>
             btn.href ? (
