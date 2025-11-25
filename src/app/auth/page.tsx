@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 export default function AuthIntroPage() {
   const searchParams = useSearchParams();
-  const role = searchParams.get("role"); // "traveler" 또는 "local"
+  const role = searchParams.get("role"); // "user" 또는 "local"
 
   return (
     <main className="relative min-h-screen">
