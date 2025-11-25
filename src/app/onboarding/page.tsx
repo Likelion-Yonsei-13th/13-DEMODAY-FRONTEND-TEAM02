@@ -70,7 +70,7 @@ export default function OnboardingPage() {
       {/* ✅ 하단 CTA */}
       <div className="sticky bottom-0 z-10 w-full bg-white/70 backdrop-blur px-4 pb-6 pt-0">
         <div className="mx-auto max-w-md flex flex-col items-center gap-[13px]">
-          <Link href="/auth?role=traveler" className="btn-yellow">
+          <Link href="/auth?role=user" className="btn-yellow">
             여행자로 시작하기
           </Link>
           <Link href="/auth?role=local" className="btn-yellow">

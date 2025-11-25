@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, FormEvent } from "react";
 import { useLogin, useSwitchRole } from "@/lib/api/mutations";
+import { useAuthRole } from "@/stores/authRole";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roleParam = searchParams.get("role"); // "traveler" 또는 "local"
+  const roleParam = searchParams.get("role"); // "user" 또는 "local"
   
   const login = useLogin();
   const switchRole = useSwitchRole();
+  const { setRole } = useAuthRole();
 
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
@@ -42,21 +44,31 @@ export default function LoginPage() {
       });
 
       console.log("로그인 성공:", result);
+      console.log("[로그인 직후] document.cookie:", document.cookie);
 
-      // Role 전환 로직
+      // Role 처리
+      // 사를: onboarding에서 선택한 role로 전환
+      // 계정 알기: 기존 role재욕
       if (roleParam) {
-        const targetRole = roleParam === "traveler" ? "USER" : "LOCAL";
+        // roleParam: "user" or "local" -> 백엔드: "USER" or "LOCAL"
+        const targetRole = roleParam === "user" ? "USER" : "LOCAL";
         
-        // 현재 role과 다르면 전환
+        // 로그인 중 role과 다르면 전환
         if (result.role !== targetRole) {
           try {
-            const switchResult = await switchRole.mutateAsync({ role: targetRole });
-            console.log("Role 전환 성공:", switchResult);
+            // 로그인 성공 후단이라 같은 요청에는 인원이 있음
+            await switchRole.mutateAsync({ role: targetRole });
+            console.log("[LoginPage] Role 전환 성공:", targetRole);
           } catch (error) {
-            console.error("Role 전환 실패:", error);
-            // Role 전환 실패해도 로그인은 성공했으므로 계속 진행
+            console.error("[LoginPage] Role 전환 실패:", error);
+            // Role 전환 실패해도 계속 진행
           }
         }
+        // 프론트엔드 store에 role 저장
+        setRole(roleParam as "user" | "local");
+      } else {
+        // roleParam이 없으면 백엔드 role을 그대로 사용
+        setRole(result.role === "USER" ? "user" : "local");
       }
 
       // TODO: 관심사 선택 페이지 구현 후 주석 해제

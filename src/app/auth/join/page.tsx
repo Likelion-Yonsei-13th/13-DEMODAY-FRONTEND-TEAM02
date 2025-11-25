@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSignup } from "@/lib/api/mutations";
+import { useAuthRole } from "@/stores/authRole";
 
 type AgreeKeys = "age14" | "terms" | "privacy" | "birthUse" | "marketing";
 const REQUIRED: AgreeKeys[] = ["age14", "terms", "privacy"];
@@ -10,8 +11,9 @@ const REQUIRED: AgreeKeys[] = ["age14", "terms", "privacy"];
 export default function JoinPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roleParam = searchParams.get("role"); // "traveler" 또는 "local"
+  const roleParam = searchParams.get("role"); // "user" 또는 "local"
   const signup = useSignup();
+  const { setRole } = useAuthRole();
 
   // 폼 입력 state
   const [formData, setFormData] = useState({
@@ -87,8 +89,9 @@ export default function JoinPage() {
     }
 
     try {
-      // roleParam에 따라 role 결정
-      const selectedRole = roleParam === "local" ? "LOCAL" : "USER";
+      // roleParam에 따라 백엔드 role 결정
+      // roleParam: "user" -> "USER", "local" -> "LOCAL"
+      const selectedRole = roleParam === "user" ? "USER" : "LOCAL";
       
       const result = await signup.mutateAsync({
         username: formData.username,
@@ -105,6 +108,8 @@ export default function JoinPage() {
       });
 
       alert(result.message || "회원가입이 완료되었습니다. 이메일을 확인해주세요.");
+      // role 저장
+      setRole(roleParam === "user" ? "user" : "local");
       router.push("/auth/login");
     } catch (error: any) {
       const errorMsg = error?.response?.data?.message || error?.message || "회원가입에 실패했습니다.";

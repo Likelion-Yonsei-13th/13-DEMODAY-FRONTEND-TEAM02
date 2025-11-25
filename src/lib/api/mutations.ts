@@ -3,6 +3,7 @@ import api from "./axios-instance";
 import { endpoints } from "./endpoints";
 
 type Role = "USER" | "LOCAL"; // 백엔드에서 사용하는 Role enum 값
+type FrontendRole = "user" | "local"; // 프론트엔드에서 사용하는 Role
 
 // --- 로그인
 type LoginReq = { username: string; password: string };
