@@ -1,11 +1,28 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSignup } from "@/lib/api/mutations";
 
 type AgreeKeys = "age14" | "terms" | "privacy" | "birthUse" | "marketing";
 const REQUIRED: AgreeKeys[] = ["age14", "terms", "privacy"];
 
 export default function JoinPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role"); // "traveler" 또는 "local"
+  const signup = useSignup();
+
+  // 폼 입력 state
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    password2: "",
+    birthYear: "",
+  });
+
+  // 동의 state
   const [agree, setAgree] = useState<Record<AgreeKeys, boolean>>({
     age14: false,
     terms: false,
@@ -29,6 +46,73 @@ export default function JoinPage() {
   };
   const toggleOne = (k: AgreeKeys) => setAgree((s) => ({ ...s, [k]: !s[k] }));
 
+  // 폼 입력 핸들러
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // 회원가입 제출
+  const handleSubmit = async () => {
+    if (!requiredChecked) {
+      alert("필수 약관에 동의해주세요.");
+      return;
+    }
+
+    // 입력 검증
+    if (!formData.username.trim()) {
+      alert("이름을 입력해주세요.");
+      return;
+    }
+    if (!formData.email.trim()) {
+      alert("이메일을 입력해주세요.");
+      return;
+    }
+    if (!formData.birthYear.trim()) {
+      alert("출생년도를 입력해주세요.");
+      return;
+    }
+    if (!formData.password.trim()) {
+      alert("비밀번호를 입력해주세요.");
+      return;
+    }
+    if (formData.password !== formData.password2) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    const birthYear = parseInt(formData.birthYear);
+    if (isNaN(birthYear) || birthYear < 1900 || birthYear > new Date().getFullYear()) {
+      alert("유효한 출생년도를 입력해주세요.");
+      return;
+    }
+
+    try {
+      // roleParam에 따라 role 결정
+      const selectedRole = roleParam === "local" ? "LOCAL" : "USER";
+      
+      const result = await signup.mutateAsync({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        password2: formData.password2,
+        role: selectedRole,
+        display_name: formData.username,
+        birth_year: birthYear,
+        is_over_14: agree.age14,
+        agreed_service_terms: agree.terms,
+        agreed_privacy: agree.privacy,
+        agreed_marketing: agree.marketing,
+      });
+
+      alert(result.message || "회원가입이 완료되었습니다. 이메일을 확인해주세요.");
+      router.push("/auth/login");
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.message || error?.message || "회원가입에 실패했습니다.";
+      alert(errorMsg);
+      console.error("회원가입 에러:", error);
+    }
+  };
+
   return (
     <main className="min-h-screen w-full flex justify-center px-4 py-10">
       <div className="w-full max-w-md">
@@ -38,19 +122,38 @@ export default function JoinPage() {
         </h1>
 
         {/* 입력 필드: 필드 간 16px */}
-        <form className="space-y-4">
-          <FormInput label="이름(닉네임)*" placeholder="홍길동" />
-          <FormInput label="출생년도 입력*" placeholder="정보를 입력해주세요" />
-          <FormInput label="이메일주소*" placeholder="ID@dtour.com" />
+        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          <FormInput 
+            label="이름(닉네임)*" 
+            placeholder="홍길동" 
+            value={formData.username}
+            onChange={(v) => handleInputChange("username", v)}
+          />
+          <FormInput 
+            label="출생년도 입력*" 
+            placeholder="1995" 
+            value={formData.birthYear}
+            onChange={(v) => handleInputChange("birthYear", v)}
+          />
+          <FormInput 
+            label="이메일주소*" 
+            placeholder="ID@dtour.com" 
+            value={formData.email}
+            onChange={(v) => handleInputChange("email", v)}
+          />
           <FormInput
             label="비밀번호*"
             placeholder="영문, 숫자, 특수문자 2가지 조합 8~15자"
             type="password"
+            value={formData.password}
+            onChange={(v) => handleInputChange("password", v)}
           />
           <FormInput
             label="비밀번호 확인*"
             placeholder="비밀번호를 한 번 더 입력해주세요."
             type="password"
+            value={formData.password2}
+            onChange={(v) => handleInputChange("password2", v)}
           />
         </form>
 
@@ -110,10 +213,11 @@ export default function JoinPage() {
         <div className="mt-6 md:mt-8 flex justify-center">
           <button
             type="button"
-            disabled={!requiredChecked}
+            onClick={handleSubmit}
+            disabled={!requiredChecked || signup.isPending}
             className={`btn-yellow disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            가입완료하기
+            {signup.isPending ? "처리중..." : "가입완료하기"}
           </button>
         </div>
       </div>
@@ -126,15 +230,25 @@ function FormInput({
   label,
   placeholder,
   type = "text",
+  value,
+  onChange,
 }: {
   label: string;
   placeholder: string;
   type?: string;
+  value: string;
+  onChange: (value: string) => void;
 }) {
   return (
     <label className="block">
       <span className="text-[14px] text-gray-800">{label}</span>
-      <input className="input-field mt-2" type={type} placeholder={placeholder} />
+      <input 
+        className="input-field mt-2" 
+        type={type} 
+        placeholder={placeholder} 
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
   );
 }

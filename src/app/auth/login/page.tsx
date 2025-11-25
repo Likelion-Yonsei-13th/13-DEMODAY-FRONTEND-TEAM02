@@ -1,9 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, FormEvent } from "react";
+import { useLogin, useSwitchRole } from "@/lib/api/mutations";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roleParam = searchParams.get("role"); // "traveler" 또는 "local"
+  
+  const login = useLogin();
+  const switchRole = useSwitchRole();
+
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
   const [keep, setKeep] = useState(false);
@@ -11,10 +20,11 @@ export default function LoginPage() {
   const [idErr, setIdErr] = useState<string | null>(null);
   const [pwErr, setPwErr] = useState<string | null>(null);
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     let ok = true;
 
+    // 입력 검증
     if (!id.trim()) {
       setIdErr("아이디 또는 이메일을 다시 확인하세요");
       ok = false;
@@ -25,8 +35,58 @@ export default function LoginPage() {
     }
     if (!ok) return;
 
-    // 🔒 백엔드 연동은 다른 팀원 담당 — 여기서는 UI만
-    alert(`UI 데모: 로그인 시도\nID: ${id}\nKeep: ${keep}`);
+    try {
+      const result = await login.mutateAsync({
+        username: id,
+        password: pw,
+      });
+
+      console.log("로그인 성공:", result);
+
+      // Role 전환 로직
+      if (roleParam) {
+        const targetRole = roleParam === "traveler" ? "USER" : "LOCAL";
+        
+        // 현재 role과 다르면 전환
+        if (result.role !== targetRole) {
+          try {
+            const switchResult = await switchRole.mutateAsync({ role: targetRole });
+            console.log("Role 전환 성공:", switchResult);
+          } catch (error) {
+            console.error("Role 전환 실패:", error);
+            // Role 전환 실패해도 로그인은 성공했으므로 계속 진행
+          }
+        }
+      }
+
+      // TODO: 관심사 선택 페이지 구현 후 주석 해제
+      // 임시로 무조건 메인으로 이동
+      router.push("/");
+      
+      // // 정상 로직 (관심사 선택 페이지 구현 후 사용)
+      // if (result.next_step === "SELECT_INTERESTS_USER") {
+      //   router.push("/interests"); // 관심사 선택 페이지
+      // } else if (result.next_step === "SELECT_INTERESTS_LOCAL") {
+      //   router.push("/interests");
+      // } else if (result.next_step === "DONE") {
+      //   router.push("/");
+      // } else {
+      //   router.push("/");
+      // }
+    } catch (error: any) {
+      console.error("로그인 에러:", error);
+      const errorMsg = error?.response?.data?.detail || error?.message || "로그인에 실패했습니다.";
+      
+      // 에러 메시지에 따라 분기
+      if (errorMsg.includes("아이디") || errorMsg.includes("비밀번호")) {
+        setIdErr("아이디 또는 비밀번호가 올바르지 않습니다.");
+        setPwErr("아이디 또는 비밀번호가 올바르지 않습니다.");
+      } else if (errorMsg.includes("이메일 인증")) {
+        alert("이메일 인증이 필요합니다. 이메일을 확인해주세요.");
+      } else {
+        alert(errorMsg);
+      }
+    }
   };
 
   return (
@@ -90,8 +150,12 @@ export default function LoginPage() {
 
           {/* CTA 버튼 */}
           <div className="pt-2 flex justify-center">
-            <button type="submit" className="btn-yellow">
-              로그인하기
+            <button 
+              type="submit" 
+              className="btn-yellow disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={login.isPending}
+            >
+              {login.isPending ? "로그인 중..." : "로그인하기"}
             </button>
           </div>
 
