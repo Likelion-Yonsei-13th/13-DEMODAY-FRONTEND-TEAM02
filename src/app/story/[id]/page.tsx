@@ -1,15 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api/axios-instance";
 import { endpoints } from "@/lib/api/endpoints";
+import { useToggleStoryLike, useCreateComment } from "@/lib/api/mutations";
 import Image from "next/image";
 
 export default function StoryDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const storyId = params.id;
+  const [commentText, setCommentText] = useState("");
 
   // 스토리 상세 조회
   const { data: story, isLoading } = useQuery({
@@ -39,6 +43,39 @@ export default function StoryDetailPage() {
   });
 
   const comments = Array.isArray(commentsData) ? commentsData : [];
+
+  // 좋아요 토글
+  const toggleLike = useToggleStoryLike();
+  const handleLike = async () => {
+    try {
+      await toggleLike.mutateAsync(Number(storyId));
+      // 스토리 상세 정보 새로고침
+      queryClient.invalidateQueries({ queryKey: ["story", storyId] });
+    } catch (error) {
+      console.error("좋아요 실패:", error);
+    }
+  };
+
+  // 댓글 작성
+  const createComment = useCreateComment(Number(storyId));
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim()) {
+      alert("댓글을 입력하세요.");
+      return;
+    }
+
+    try {
+      await createComment.mutateAsync({ content: commentText });
+      setCommentText("");
+      // 댓글 목록 새로고침
+      queryClient.invalidateQueries({ queryKey: ["comments", storyId] });
+      alert("댓글이 작성되었습니다.");
+    } catch (error) {
+      console.error("댓글 작성 실패:", error);
+      alert("댓글 작성에 실패했습니다.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -90,9 +127,16 @@ export default function StoryDetailPage() {
         )}
 
         {/* 조회수, 좋아요 */}
-        <div className="mt-3 flex gap-4 text-[12px] text-[#999]">
-          <span>조회 {story.view_count || 0}</span>
-          <span>좋아요 {story.liked_count || 0}</span>
+        <div className="mt-3 flex items-center gap-4">
+          <span className="text-[12px] text-[#999]">조회 {story.view_count || 0}</span>
+          <button
+            onClick={handleLike}
+            disabled={toggleLike.isPending}
+            className="flex items-center gap-1 text-[12px] text-[#FF3B30] disabled:opacity-50"
+          >
+            <span>❤️</span>
+            <span>좋아요 {story.liked_count || 0}</span>
+          </button>
         </div>
 
         {/* 사진 */}
@@ -120,6 +164,27 @@ export default function StoryDetailPage() {
             댓글 {comments.length}
           </h3>
 
+          {/* 댓글 작성 폼 */}
+          <form onSubmit={handleCommentSubmit} className="mb-6">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="댓글을 입력하세요"
+                className="flex-1 rounded-[8px] border border-[#E5E5E5] px-4 py-2 text-[14px] text-[#111] placeholder:text-[#999] focus:border-[#FFC727] focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={createComment.isPending || !commentText.trim()}
+                className="rounded-[8px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-50"
+              >
+                {createComment.isPending ? "작성 중..." : "작성"}
+              </button>
+            </div>
+          </form>
+
+          {/* 댓글 목록 */}
           {comments.length === 0 ? (
             <p className="py-6 text-center text-[14px] text-[#999]">
               첫 댓글을 작성해보세요!

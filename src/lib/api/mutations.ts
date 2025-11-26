@@ -241,3 +241,27 @@ export function useCreateStory() {
     },
   });
 }
+
+// 스토리 좋아요 토글
+export function useToggleStoryLike() {
+  return useMutation<{ liked: boolean; liked_count: number }, Error, number>({
+    mutationFn: async (storyId) => {
+      const { data } = await api.post(endpoints.story.like(storyId));
+      return data;
+    },
+  });
+}
+
+// 댓글 작성
+type CommentCreateData = {
+  content: string;
+};
+
+export function useCreateComment(storyId: number) {
+  return useMutation<any, Error, CommentCreateData>({
+    mutationFn: async (body) => {
+      const { data } = await api.post(endpoints.story.comments(storyId), body);
+      return data;
+    },
+  });
+}
