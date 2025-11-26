@@ -7,6 +7,7 @@ export const endpoints = {
     login: "/account/login/",
     logout: "/account/logout/",
     verifyEmail: (token: string) => `/account/verify-email/${token}/`,
+    me: "/account/me/",
   },
   
   // 온보딩
