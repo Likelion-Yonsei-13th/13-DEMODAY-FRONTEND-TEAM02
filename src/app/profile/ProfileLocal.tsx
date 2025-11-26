@@ -1,9 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useGetLocalProfile } from "@/lib/api/mutations";
 
 export default function ProfileLocal() {
+  const router = useRouter();
   const { data: profile, isLoading, error } = useGetLocalProfile();
   
   if (error) {
@@ -44,7 +46,10 @@ export default function ProfileLocal() {
           </div>
 
           {/* 프로필 수정 버튼 */}
-          <button className="h-8 rounded-full border border-[#333] px-4 text-[11px] font-medium text-[#333]">
+          <button 
+            onClick={() => router.push("/profile/edit/local")}
+            className="h-8 rounded-full border border-[#333] px-4 text-[11px] font-medium text-[#333]"
+          >
             프로필 수정
           </button>
         </div>
@@ -53,16 +58,19 @@ export default function ProfileLocal() {
         <div className="mt-5">
 <p className="text-[18px] font-bold text-[#111]">{profile?.display_name ?? "닉네임"}</p>
           <p className="mt-1 text-[12px] text-[#555]">
-            로컬이 적는 제안서 한줄 정리입니다
+            {profile?.bio || "제안서 한줄 정리를 작성해주세요"}
           </p>
 
           <div className="mt-3 text-[11px] text-[#666] leading-[1.4]">
-            <p>MBTI_ISTJ</p>
-            <p>25/09/22</p>
+            <p>언어: {profile?.languages?.join(", ") || "정보 없음"}</p>
+            <p>지역: {profile?.regions?.join(", ") || "정보 없음"}</p>
           </div>
 
           <div className="mt-3 flex justify-end">
-            <button className="h-8 rounded-full border border-[#333] px-4 text-[12px] font-medium text-[#333]">
+            <button 
+              onClick={() => router.push("/profile/edit/local")}
+              className="h-8 rounded-full border border-[#333] px-4 text-[12px] font-medium text-[#333]"
+            >
               수정
             </button>
           </div>

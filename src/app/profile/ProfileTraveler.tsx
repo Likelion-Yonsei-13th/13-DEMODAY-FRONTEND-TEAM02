@@ -3,9 +3,11 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useGetUserProfile } from "@/lib/api/mutations";
 
 export default function ProfileTraveler() {
+  const router = useRouter();
   const { data: profile, isLoading, error } = useGetUserProfile();
   
   if (error) {
@@ -42,11 +44,11 @@ export default function ProfileTraveler() {
             <div className="mt-4">
 <p className="text-[18px] font-bold text-[#111]">{profile?.display_name ?? "닉네임"}</p>
               <p className="mt-1 text-[12px] text-[#555]">
-                로컬이 적는 제안서 한줄 정리입니다
+                {profile?.bio || "자기소개를 작성해주세요"}
               </p>
               <div className="mt-3 text-[11px] leading-[1.4] text-[#666]">
-                <p>MBTI_ISTJ</p>
-                <p>25/09/22</p>
+                <p>MBTI: {profile?.mbti || "정보 없음"}</p>
+                <p>여행 스타일: {profile?.travel_style || "정보 없음"}</p>
               </div>
             </div>
           </div>
@@ -54,6 +56,7 @@ export default function ProfileTraveler() {
           {/* 프로필 수정 버튼 */}
           <button
             type="button"
+            onClick={() => router.push("/profile/edit/user")}
             className="mt-6 flex w-[85px] items-center justify-center gap-[10px] rounded-[10px] border border-black bg-white/90 px-2 py-1 text-[11px] font-medium text-[#111]"
           >
             프로필 수정

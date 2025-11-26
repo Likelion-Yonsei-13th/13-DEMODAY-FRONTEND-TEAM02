@@ -147,3 +147,22 @@ export function useGetUserProfile() {
     retry: false,
   });
 }
+
+// ---- 프로필 수정 ----
+export function useUpdateLocalProfile() {
+  return useMutation<LocalProfileData, Error, Partial<LocalProfileData>>({
+    mutationFn: async (body) => {
+      const { data } = await api.put(endpoints.profile.local, body);
+      return data;
+    },
+  });
+}
+
+export function useUpdateUserProfile() {
+  return useMutation<UserProfileData, Error, Partial<UserProfileData>>({
+    mutationFn: async (body) => {
+      const { data } = await api.put(endpoints.profile.user, body);
+      return data;
+    },
+  });
+}
