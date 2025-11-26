@@ -2,12 +2,12 @@
 "use client";
 
 import Image from "next/image";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import TopHeader from "@/components/TopHeader";
 import Navbar from "@/components/nav/Navbar";
-import { useState } from "react";
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const keyword = searchParams.get("q") || "종로";
 
@@ -58,6 +58,14 @@ export default function SearchPage() {
 
       <Navbar />
     </main>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">로딩중...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }
 

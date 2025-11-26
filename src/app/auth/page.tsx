@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function AuthIntroPage() {
+function AuthIntroContent() {
   const searchParams = useSearchParams();
   const role = searchParams.get("role"); // "user" 또는 "local"
 
@@ -53,5 +54,13 @@ export default function AuthIntroPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+export default function AuthIntroPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">로딩중...</div>}>
+      <AuthIntroContent />
+    </Suspense>
   );
 }

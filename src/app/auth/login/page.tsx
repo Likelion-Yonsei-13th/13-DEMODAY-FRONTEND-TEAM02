@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, FormEvent } from "react";
+import { Suspense, useState, FormEvent } from "react";
 import { useLogin, useSwitchRole } from "@/lib/api/mutations";
 import { useAuthRole } from "@/stores/authRole";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role"); // "user" 또는 "local"
@@ -183,5 +183,13 @@ export default function LoginPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">로딩중...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

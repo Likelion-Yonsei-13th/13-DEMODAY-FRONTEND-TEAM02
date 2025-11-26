@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSignup } from "@/lib/api/mutations";
 import { useAuthRole } from "@/stores/authRole";
@@ -8,7 +8,8 @@ import { useAuthRole } from "@/stores/authRole";
 type AgreeKeys = "age14" | "terms" | "privacy" | "birthUse" | "marketing";
 const REQUIRED: AgreeKeys[] = ["age14", "terms", "privacy"];
 
-export default function JoinPage() {
+// useSearchParams를 사용하는 컴포넌트
+function JoinForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const roleParam = searchParams.get("role"); // "user" 또는 "local"
@@ -227,6 +228,14 @@ export default function JoinPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function JoinPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">로딩중...</div>}>
+      <JoinForm />
+    </Suspense>
   );
 }
 
