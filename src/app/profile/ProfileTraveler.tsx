@@ -3,8 +3,15 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useGetUserProfile } from "@/lib/api/mutations";
 
 export default function ProfileTraveler() {
+  const { data: profile, isLoading, error } = useGetUserProfile();
+  
+  if (error) {
+    console.error("프로필 로드 실패:", error);
+  }
+  
   // 여행자 이야기 토글 상태 (index별로 on/off)
   const storyIds = [1, 2, 3];
   const [openStories, setOpenStories] = useState<Record<number, boolean>>({
@@ -33,7 +40,7 @@ export default function ProfileTraveler() {
 
             {/* 닉네임 / 한줄 소개 / MBTI + 날짜 */}
             <div className="mt-4">
-              <p className="text-[18px] font-bold text-[#111]">닉네임</p>
+<p className="text-[18px] font-bold text-[#111]">{profile?.display_name ?? "닉네임"}</p>
               <p className="mt-1 text-[12px] text-[#555]">
                 로컬이 적는 제안서 한줄 정리입니다
               </p>

@@ -3,16 +3,43 @@ import axios from "axios";
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000",
   timeout: 10000,
-  headers: { "Content-Type": "application/json" },
+  headers: { 
+    "Content-Type": "application/json",
+  },
   withCredentials: true, // 쿠키 기반 인증 활성화 (HttpOnly 쿠키 사용)
 });
 
+// 리쿠스트 인터셉터: Authorization 헤더 추가
+api.interceptors.request.use(
+  (config) => {
+    // localStorage에서 토큰 가져오기
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    console.log("[API Request] URL:", config.url);
+    console.log("[API Request] Headers:", config.headers);
+    return config;
+  },
+  (error) => {
+    console.error("[API Request Error]", error);
+    return Promise.reject(error);
+  }
+);
+
 // 응답 인터셉터: 에러 처리
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("[API Response] Status:", response.status, "URL:", response.config.url);
+    return response;
+  },
   (error) => {
+    console.error("[API Error] Status:", error.response?.status, "Message:", error.response?.data);
     if (error.response?.status === 401) {
-      // 인증 실패 시 처리 (필요시 로그인 페이지로 리다이렉트)
+      // 인증 실패 시 처리
+      console.warn("[401 Unauthorized] 쿠키를 확인하세요.");
       if (typeof window !== "undefined") {
         // window.location.href = '/auth/login';
       }

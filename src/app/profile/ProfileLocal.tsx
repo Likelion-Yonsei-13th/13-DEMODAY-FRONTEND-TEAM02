@@ -1,8 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import { useGetLocalProfile } from "@/lib/api/mutations";
 
 export default function ProfileLocal() {
+  const { data: profile, isLoading, error } = useGetLocalProfile();
+  
+  if (error) {
+    console.error("프로필 로드 실패:", error);
+  }
+  
   return (
     <div className="mx-auto w-full max-w-[420px] bg-white pb-24">
       {/* --- 상단 프로필 영역 --- */}
@@ -44,7 +51,7 @@ export default function ProfileLocal() {
 
         {/* 닉네임 / 한줄 소개 / MBTI + 날짜 / 수정 버튼 */}
         <div className="mt-5">
-          <p className="text-[18px] font-bold text-[#111]">닉네임</p>
+<p className="text-[18px] font-bold text-[#111]">{profile?.display_name ?? "닉네임"}</p>
           <p className="mt-1 text-[12px] text-[#555]">
             로컬이 적는 제안서 한줄 정리입니다
           </p>
