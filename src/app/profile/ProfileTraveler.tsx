@@ -47,18 +47,6 @@ export default function ProfileTraveler() {
   if (error) {
     console.error("프로필 로드 실패:", error);
   }
-  
-  // 여행자 이야기 토글 상태 (index별로 on/off)
-  const storyIds = [1, 2, 3];
-  const [openStories, setOpenStories] = useState<Record<number, boolean>>({
-    1: true,
-    2: true,
-    3: true,
-  });
-
-  const toggleStory = (id: number) => {
-    setOpenStories((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
 
   return (
     <div className="mx-auto w-full max-w-[420px] bg-white pb-24">
@@ -134,61 +122,45 @@ export default function ProfileTraveler() {
             작성한 이야기가 없습니다.
           </div>
         ) : (
-          stories.map((story: any) => {
-            const isOpen = openStories[story.id] ?? true;
-
-            return (
-              <div key={story.id} className="border-b border-[#E5E5E5] pb-5">
-                {/* 헤더: 여행자 이야기 + 토글 화살표 */}
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between pt-5"
-                  onClick={() => toggleStory(story.id)}
-                  aria-expanded={isOpen}
-                >
-                  <span className="text-[14px] font-semibold text-[#111]">
-                    {story.title}
-                  </span>
-                  <Image
-                    src="/taggle.svg"
-                    alt={isOpen ? "접기" : "펼치기"}
-                    width={16}
-                    height={16}
-                    className={`transition-transform ${
-                      isOpen ? "" : "rotate-180"
-                    }`}
-                  />
-                </button>
-
-                {/* 내용 영역 (토글) */}
-                {isOpen && (
-                  <div className="mt-4 flex gap-4">
-                    {story.photo_url && (
-                      <div className="h-[80px] w-[80px] overflow-hidden rounded bg-[#E5E5E5]">
-                        <img 
-                          src={story.photo_url} 
-                          alt={story.title}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <p className="text-[12px] text-[#555]">
-                        {story.city && story.district 
-                          ? `[${story.city} ${story.district}] `
-                          : ""}
-                        {story.preview || story.content?.substring(0, 100)}
-                      </p>
-                      <div className="mt-3 flex gap-6 text-[11px] text-[#999]">
-                        <span>좋아요 {story.liked_count || 0}</span>
-                        <span>조회 {story.view_count || 0}</span>
-                      </div>
+          <div className="space-y-0">
+            {stories.map((story: any) => (
+              <div 
+                key={story.id} 
+                className="border-b border-[#E5E5E5] py-5 cursor-pointer hover:bg-[#F9F9F9] transition-colors"
+                onClick={() => router.push(`/story/${story.id}`)}
+              >
+                <div className="flex gap-4">
+                  {/* 사진 */}
+                  {story.photo_url && (
+                    <div className="h-[80px] w-[80px] flex-shrink-0 overflow-hidden rounded bg-[#E5E5E5]">
+                      <img 
+                        src={story.photo_url} 
+                        alt={story.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* 내용 */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[14px] font-semibold text-[#111] truncate">
+                      {story.title}
+                    </h3>
+                    <p className="mt-1 text-[12px] text-[#555] line-clamp-2">
+                      {story.city && story.district 
+                        ? `[${story.city} ${story.district}] `
+                        : ""}
+                      {story.preview || story.content?.substring(0, 100)}
+                    </p>
+                    <div className="mt-2 flex gap-4 text-[11px] text-[#999]">
+                      <span>좋아요 {story.liked_count || 0}</span>
+                      <span>조회 {story.view_count || 0}</span>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            );
-          })
+            ))}
+          </div>
         )}
 
         {/* 후기 전체보기 버튼 */}
