@@ -27,6 +27,37 @@ type UserProfileData = {
   travel_style: string;
 };
 
+// --- 스토리 타입
+type StoryData = {
+  id: number;
+  author: number;
+  author_name: string;
+  country: string;
+  state: string;
+  city: string;
+  district: string;
+  place?: any;
+  title: string;
+  preview?: string;
+  content?: string;
+  photo_url: string;
+  liked_count: number;
+  view_count: number;
+  created_at: string;
+};
+
+type StoryCreateData = {
+  country: string;
+  state: string;
+  city: string;
+  district: string;
+  place?: number;
+  title: string;
+  content: string;
+  photo_url: string;
+  is_public: boolean;
+};
+
 // --- 로그인
 type LoginReq = { username: string; password: string };
 type LoginRes = { 
@@ -45,6 +76,17 @@ export function useLogin() {
       // 토큰을 localStorage에 저장 (Cross-Origin 환경)
       if (data.access_token) {
         localStorage.setItem("access_token", data.access_token);
+        // JWT 토큰에서 user_id 추출
+        try {
+          const payload = JSON.parse(atob(data.access_token.split('.')[1]));
+          console.log("[Login] JWT payload:", payload);
+          if (payload.user_id) {
+            localStorage.setItem("user_id", payload.user_id);
+            console.log("[Login] user_id 저장됨:", payload.user_id);
+          }
+        } catch (e) {
+          console.error("토큰 파싱 실패:", e);
+        }
       }
       if (data.refresh_token) {
         localStorage.setItem("refresh_token", data.refresh_token);
@@ -163,6 +205,39 @@ export function useUpdateUserProfile() {
     mutationFn: async (body) => {
       const { data } = await api.put(endpoints.profile.user, body);
       return data;
+    },
+  });
+}
+
+// ---- 스토리 ----
+// 내가 작성한 스토리 목록 조회
+export function useGetMyStories() {
+  return useQuery<StoryData[], Error>({
+    queryKey: ["stories", "mine"],
+    queryFn: async () => {
+      const userId = localStorage.getItem("user_id"); // 로그인 시 저장된 user_id
+      const { data } = await api.get(endpoints.story.list, {
+        params: { author: userId },
+      });
+      return data.results || data; // pagination 처리
+    },
+    retry: false,
+  });
+}
+
+// 스토리 생성
+export function useCreateStory() {
+  return useMutation<StoryData, Error, StoryCreateData>({
+    mutationFn: async (body) => {
+      const { data } = await api.post(endpoints.story.list, body);
+      return data;
+    },
+    onSuccess: () => {
+      // 스토리 목록 캠시 무효화
+      const queryClient = (window as any).__queryClient;
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ["stories", "mine"] });
+      }
     },
   });
 }

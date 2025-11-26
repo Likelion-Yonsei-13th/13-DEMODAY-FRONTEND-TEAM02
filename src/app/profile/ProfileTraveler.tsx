@@ -1,14 +1,48 @@
 // src/app/profile/ProfileTraveler.tsx
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useGetUserProfile } from "@/lib/api/mutations";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api/axios-instance";
+import { endpoints } from "@/lib/api/endpoints";
 
 export default function ProfileTraveler() {
   const router = useRouter();
   const { data: profile, isLoading, error } = useGetUserProfile();
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setUserId(localStorage.getItem("user_id"));
+  }, []);
+  
+  // 내 스토리 목록 조회
+  const { data: allStoriesData } = useQuery<any>({
+    queryKey: ["stories", "all"],
+    queryFn: async () => {
+      const { data } = await api.get(endpoints.story.list);
+      console.log("[ProfileTraveler] 전체 스토리:", data);
+      return data;
+    },
+    retry: false,
+  });
+
+  // 내 스토리만 필터링
+  const stories = React.useMemo(() => {
+    if (!allStoriesData || !userId) return [];
+    const allStories = allStoriesData.results || allStoriesData;
+    console.log("[ProfileTraveler] allStories:", allStories);
+    console.log("[ProfileTraveler] userId:", userId, "type:", typeof userId);
+    
+    const myStories = allStories.filter((s: any) => {
+      console.log(`[ProfileTraveler] 스토리 author: ${s.author} (type: ${typeof s.author}), userId: ${userId}`);
+      return String(s.author) === String(userId);
+    });
+    console.log("[ProfileTraveler] 내 스토리:", myStories);
+    return myStories;
+  }, [allStoriesData, userId]);
   
   if (error) {
     console.error("프로필 로드 실패:", error);
@@ -77,66 +111,85 @@ export default function ProfileTraveler() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-baseline gap-2">
             <h2 className="text-[18px] font-bold text-[#111]">
-              00님이 작성한 후기
+              {profile?.display_name || "닉네임"}님이 작성한 후기
             </h2>
             <span className="text-[13px] font-semibold text-[#FFC727]">
-              12개
+              {stories.length}개
             </span>
           </div>
 
-          {/* 오른쪽 연필 아이콘 */}
-          <button type="button" aria-label="후기 편집">
-            <Image src="/edit.svg" alt="후기 편집" width={16} height={16} />
+          {/* 오른쪽 연필 아이콘 - 스토리 추가 */}
+          <button 
+            type="button" 
+            onClick={() => router.push("/story/create")}
+            aria-label="스토리 추가"
+          >
+            <Image src="/edit.svg" alt="스토리 추가" width={16} height={16} />
           </button>
         </div>
 
         {/* 여행자 이야기 리스트 */}
-        {storyIds.map((id) => {
-          const isOpen = openStories[id] ?? true;
+        {stories.length === 0 ? (
+          <div className="py-10 text-center text-[14px] text-[#999]">
+            작성한 이야기가 없습니다.
+          </div>
+        ) : (
+          stories.map((story: any) => {
+            const isOpen = openStories[story.id] ?? true;
 
-          return (
-            <div key={id} className="border-b border-[#E5E5E5] pb-5">
-              {/* 헤더: 여행자 이야기 + 토글 화살표 */}
-              <button
-                type="button"
-                className="flex w-full items-center justify-between pt-5"
-                onClick={() => toggleStory(id)}
-                aria-expanded={isOpen}
-              >
-                <span className="text-[14px] font-semibold text-[#111]">
-                  여행자 이야기
-                </span>
-                <Image
-                  src="/taggle.svg"
-                  alt={isOpen ? "접기" : "펼치기"}
-                  width={16}
-                  height={16}
-                  className={`transition-transform ${
-                    isOpen ? "" : "rotate-180"
-                  }`}
-                />
-              </button>
+            return (
+              <div key={story.id} className="border-b border-[#E5E5E5] pb-5">
+                {/* 헤더: 여행자 이야기 + 토글 화살표 */}
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between pt-5"
+                  onClick={() => toggleStory(story.id)}
+                  aria-expanded={isOpen}
+                >
+                  <span className="text-[14px] font-semibold text-[#111]">
+                    {story.title}
+                  </span>
+                  <Image
+                    src="/taggle.svg"
+                    alt={isOpen ? "접기" : "펼치기"}
+                    width={16}
+                    height={16}
+                    className={`transition-transform ${
+                      isOpen ? "" : "rotate-180"
+                    }`}
+                  />
+                </button>
 
-              {/* 내용 영역 (토글) */}
-              {isOpen && (
-                <div className="mt-4 flex gap-4">
-                  <div className="h-[80px] w-[80px] bg-[#E5E5E5]" />
-                  <div className="flex-1">
-                    <p className="text-[12px] text-[#555]">
-                      [카테고리명] 후기 제목을 입력하세요
-                      <br />
-                      후기 내용 미리보기
-                    </p>
-                    <div className="mt-3 flex gap-6 text-[11px] text-[#999]">
-                      <span>좋아요수</span>
-                      <span>댓글수</span>
+                {/* 내용 영역 (토글) */}
+                {isOpen && (
+                  <div className="mt-4 flex gap-4">
+                    {story.photo_url && (
+                      <div className="h-[80px] w-[80px] overflow-hidden rounded bg-[#E5E5E5]">
+                        <img 
+                          src={story.photo_url} 
+                          alt={story.title}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="text-[12px] text-[#555]">
+                        {story.city && story.district 
+                          ? `[${story.city} ${story.district}] `
+                          : ""}
+                        {story.preview || story.content?.substring(0, 100)}
+                      </p>
+                      <div className="mt-3 flex gap-6 text-[11px] text-[#999]">
+                        <span>좋아요 {story.liked_count || 0}</span>
+                        <span>조회 {story.view_count || 0}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })
+        )}
 
         {/* 후기 전체보기 버튼 */}
         <div className="mt-6">
