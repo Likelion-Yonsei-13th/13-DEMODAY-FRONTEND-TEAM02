@@ -1,10 +1,11 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import TopHeader from "@/components/TopHeader";
 import Navbar from "@/components/nav/Navbar";
 import { absUrl, useStoriesByRegion, type StoryListItem } from "@/lib/api/queries.place";
 
-export default function StoriesListPage() {
+function StoriesListContent() {
   const sp = useSearchParams();
   const region = {
     country: sp.get("country") || undefined,
@@ -42,5 +43,21 @@ export default function StoriesListPage() {
       </section>
       <Navbar />
     </main>
+  );
+}
+
+export default function StoriesListPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#F4F4F4] pb-[calc(80px+env(safe-area-inset-bottom))]">
+        <TopHeader />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+        <Navbar />
+      </main>
+    }>
+      <StoriesListContent />
+    </Suspense>
   );
 }
