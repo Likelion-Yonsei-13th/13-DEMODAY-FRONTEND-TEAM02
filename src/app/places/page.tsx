@@ -1,10 +1,11 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import TopHeader from "@/components/TopHeader";
 import Navbar from "@/components/nav/Navbar";
 import { usePlacesByRegion, absUrl, type TravelPlace } from "@/lib/api/queries.place";
 
-export default function PlacesPage() {
+function PlacesContent() {
   const sp = useSearchParams();
   const router = useRouter();
   const region = {
@@ -40,5 +41,21 @@ export default function PlacesPage() {
       </section>
       <Navbar />
     </main>
+  );
+}
+
+export default function PlacesPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#F4F4F4] pb-[calc(80px+env(safe-area-inset-bottom))]">
+        <TopHeader />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-gray-500">Loading...</div>
+        </div>
+        <Navbar />
+      </main>
+    }>
+      <PlacesContent />
+    </Suspense>
   );
 }
