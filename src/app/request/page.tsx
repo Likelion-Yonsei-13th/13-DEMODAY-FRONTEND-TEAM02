@@ -16,6 +16,9 @@ export default function RequestPage() {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   
+  // 제목
+  const [title, setTitle] = useState<string>("");
+  
   // 지역 선택
   const [selectedCountry, setSelectedCountry] = useState<string>("");
   const [selectedCity, setSelectedCity] = useState<string>("");
@@ -130,6 +133,10 @@ export default function RequestPage() {
 
   /** 요청서 제출 */
   const handleSubmit = async () => {
+    if (!title.trim()) {
+      alert("제안서 제목을 입력해주세요.");
+      return;
+    }
     if (selectedPlaceIds.length === 0) {
       alert("여행지를 선택해주세요.");
       return;
@@ -150,8 +157,10 @@ export default function RequestPage() {
     try {
       // 첫 번째 place로 제출 (백엔드가 단일 place만 받음)
       await createRequest.mutateAsync({
-        place: selectedPlaceIds[0],
+        title: title.trim(),
+        place_id: selectedPlaceIds[0],
         date: startDate.toISOString().split('T')[0],
+        end_date: endDate?.toISOString().split('T')[0],
         number_of_people: numberOfPeople,
         guidance,
         travel_type_ids: selectedTagIds,
@@ -210,6 +219,18 @@ export default function RequestPage() {
           제안서를 받아보길 원하시는 기간을 선택해주세요
         </p>
 
+        {/* TITLE */}
+        <div className="px-5 mb-4">
+          <p className="text-[14px] font-medium mb-2">제안서 제목*</p>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="예: 종로구 한국 체험"
+            className="w-full border border-gray-300 rounded-lg py-3 px-4 bg-white text-[14px]"
+          />
+        </div>
+
         {/* CALENDAR */}
         <div className="px-5">
         <div className="w-full bg-white border rounded-xl px-4 py-4 shadow-sm">
@@ -266,12 +287,15 @@ export default function RequestPage() {
             {/* 시작 */}
             <div className="flex items-center gap-2">
               <select className="rounded-lg p-2 text-[14px] bg-white">
-                {[...Array(12)].map((_, i) => <option key={i}>{i+1}</option>)}
+                {[...Array(24)].map((_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                ))}
               </select>
               <span className="text-[14px]">시</span>
 
               <select className="rounded-lg p-2 text-[14px] bg-white">
-                <option>30</option>
+                <option value="0">00</option>
+                <option value="30">30</option>
               </select>
               <span className="text-[14px]">분 ~</span>
             </div>
@@ -279,12 +303,15 @@ export default function RequestPage() {
             {/* 종료 */}
             <div className="flex items-center gap-2">
               <select className="rounded-lg p-2 text-[14px] bg-white">
-                {[...Array(12)].map((_, i) => <option key={i}>{i+1}</option>)}
+                {[...Array(24)].map((_, i) => (
+                  <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
+                ))}
               </select>
               <span className="text-[14px]">시</span>
 
               <select className="rounded-lg p-2 text-[14px] bg-white">
-                <option>30</option>
+                <option value="0">00</option>
+                <option value="30">30</option>
               </select>
               <span className="text-[14px]">분</span>
             </div>

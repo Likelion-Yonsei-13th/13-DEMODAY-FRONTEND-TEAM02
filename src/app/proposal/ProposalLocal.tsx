@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRequests } from "@/lib/api/queries.document";
+import { useRequests, useRoots } from "@/lib/api/queries.document";
 import api from "@/lib/api/axios-instance";
 
 type LocalProfile = {
@@ -14,8 +14,22 @@ export default function ProposalLocal() {
   const [activeTab, setActiveTab] = useState<"recent" | "unread" | "mine">("recent");
   const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
   const [filteredRequestIds, setFilteredRequestIds] = useState<number[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const { data: allRequests, isLoading } = useRequests();
+  const { data: allRoots, isLoading: rootsLoading } = useRoots();
+
+  // localStorage에서 현재 로그인한 사용자 ID 가져오기
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    setCurrentUserId(userId);
+  }, []);
+
+  // 현재 로그인한 로컬이 작성한 제안서(Root)만 필터링
+  const myRoots = useMemo(() => {
+    if (!allRoots || !currentUserId) return [];
+    return allRoots.filter(root => String(root.founder.uuid) === currentUserId);
+  }, [allRoots, currentUserId]);
 
   // 로컬 프로필 불러오기
   useEffect(() => {
@@ -91,58 +105,107 @@ export default function ProposalLocal() {
 
       {/* LIST */}
       <main className="px-5 pt-4">
-        {isLoading ? (
-          <div className="text-center py-10 text-gray-500">로딩 중...</div>
-        ) : !allRequests || allRequests.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">요청서가 없습니다.</div>
-        ) : (
-          allRequests.map((request) => (
-            <article
-              key={request.id}
-              className="border-b border-[#EDEDED] py-4 last:border-none"
-            >
-              <div className="flex items-start justify-between">
-                {/* LEFT */}
-                <div>
-                  <p className="text-[14px] font-semibold text-[#111]">
-                    여행지 ID: {request.place}
-                  </p>
-                  <p className="mt-[2px] text-[12px] text-[#555]">
-                    {request.date} · {request.number_of_people}명
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {request.travel_type.slice(0, 3).map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="text-[11px] text-[#999] whitespace-nowrap"
-                      >
-                        #{tag.name}
-                      </span>
-                    ))}
-                  </div>
-                  {request.experience && (
-                    <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
-                      {request.experience}
+        {activeTab === "mine" ? (
+          // "내 제안서" 탭: 로컬이 작성한 Root 목록
+          rootsLoading ? (
+            <div className="text-center py-10 text-gray-500">로딩 중...</div>
+          ) : myRoots.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">작성한 제안서가 없습니다.</div>
+          ) : (
+            myRoots.map((root) => (
+              <article
+                key={root.id}
+                className="border-b border-[#EDEDED] py-4 last:border-none"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#111]">
+                      제안서 #{root.id}{root.place && ` - ${typeof root.place === 'object' ? root.place.name || root.place.city : root.place}`}
                     </p>
-                  )}
+                    <p className="mt-[2px] text-[12px] text-[#555]">
+                      {root.number_of_people}명 {root.guidance && "· 가이드 포함"}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {root.travel_type.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="text-[11px] text-[#999] whitespace-nowrap"
+                        >
+                          #{tag.name}
+                        </span>
+                      ))}
+                    </div>
+                    {root.experience && (
+                      <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
+                        {root.experience}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    className="text-[11px] text-[#FFC727] font-semibold px-3 py-1 border border-[#FFC727] rounded"
+                    onClick={() => alert(`제안서 #${root.id} 상세보기`)}
+                  >
+                    상세보기
+                  </button>
                 </div>
+              </article>
+            ))
+          )
+        ) : (
+          // "최근 받은 요청서" / "안읽은 요청서" 탭: Request 목록
+          isLoading ? (
+            <div className="text-center py-10 text-gray-500">로딩 중...</div>
+          ) : !allRequests || allRequests.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">요청서가 없습니다.</div>
+          ) : (
+            allRequests.map((request) => (
+              <article
+                key={request.id}
+                className="border-b border-[#EDEDED] py-4 last:border-none"
+              >
+                <div className="flex items-start justify-between">
+                  {/* LEFT */}
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#111]">
+                      {request.title || `여행지: ${request.place?.name || request.place?.city || request.place?.id}`}
+                    </p>
+                    <p className="mt-[2px] text-[12px] text-[#555]">
+                      {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {request.travel_type.slice(0, 3).map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="text-[11px] text-[#999] whitespace-nowrap"
+                        >
+                          #{tag.name}
+                        </span>
+                      ))}
+                    </div>
+                    {request.experience && (
+                      <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
+                        {request.experience}
+                      </p>
+                    )}
+                  </div>
 
-                {/* 제안서 보내기 버튼 */}
-                <Link
-                  href={`/proposal/send?requestId=${request.id}`}
-                  className="flex flex-col items-center text-[11px] text-[#FFC727] font-semibold"
-                >
-                  <Image
-                    src="/send-yellow.svg"
-                    alt="제안"
-                    width={22}
-                    height={22}
-                  />
-                  제안서 보내기
-                </Link>
-              </div>
-            </article>
-          ))
+                  {/* 제안서 보내기 버튼 */}
+                  <Link
+                    href={`/proposal/send?requestId=${request.id}`}
+                    className="flex flex-col items-center text-[11px] text-[#FFC727] font-semibold"
+                  >
+                    <Image
+                      src="/send-yellow.svg"
+                      alt="제안"
+                      width={22}
+                      height={22}
+                    />
+                    제안서 보내기
+                  </Link>
+                </div>
+              </article>
+            ))
+          )
         )}
       </main>
     </div>

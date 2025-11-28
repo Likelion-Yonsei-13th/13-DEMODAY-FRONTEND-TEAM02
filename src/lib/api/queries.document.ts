@@ -10,11 +10,22 @@ export type ThemeTag = {
   parent: number | null;
 };
 
+export type TravelPlace = {
+  id: number;
+  name: string;
+  country: string;
+  state: string;
+  city: string;
+  district: string;
+};
+
 export type Request = {
   id: number;
   user: { uuid: string };
-  place: number;
+  place: TravelPlace;
+  title?: string;
   date: string;
+  end_date?: string;
   number_of_people: number;
   guidance: boolean;
   travel_type: ThemeTag[];
@@ -24,8 +35,10 @@ export type Request = {
 };
 
 export type RequestCreateInput = {
-  place: number;
+  place_id: number;
+  title?: string;
   date: string;
+  end_date?: string;
   number_of_people: number;
   guidance?: boolean;
   travel_type_ids?: number[];

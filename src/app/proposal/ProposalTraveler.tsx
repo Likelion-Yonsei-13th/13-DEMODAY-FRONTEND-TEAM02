@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useRequests } from "@/lib/api/queries.document";
@@ -35,7 +35,20 @@ const MOCK_PROPOSALS: Proposal[] = [
 export default function ProposalTraveler() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("recent");
-  const { data: myRequests, isLoading: requestsLoading } = useRequests();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { data: allRequests, isLoading: requestsLoading } = useRequests();
+
+  // localStorage에서 현재 로그인한 사용자 ID 가져오기
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    setCurrentUserId(userId);
+  }, []);
+
+  // 현재 사용자가 작성한 요청서만 필터링
+  const myRequests = useMemo(() => {
+    if (!allRequests || !currentUserId) return [];
+    return allRequests.filter(request => String(request.user.uuid) === currentUserId);
+  }, [allRequests, currentUserId]);
 
   // 분류 탭 상태
   const [hoveredId, setHoveredId] = useState<number | null>(null);
@@ -200,7 +213,7 @@ function RecentTab({
       <section className="pt-16">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
-            <Image src="/check.svg" alt="체크" width={32} height={32} />
+            <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
           </div>
           <p className="text-[14px] text-[#555]">받은 제안서가 없습니다</p>
           <button className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white">
@@ -547,7 +560,7 @@ function MyRequestsTab({
       <section className="pt-16">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
-            <Image src="/check.svg" alt="체크" width={32} height={32} />
+            <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
           </div>
           <p className="text-[14px] text-[#555]">제안한 요청서가 없습니다</p>
           <button 
@@ -579,11 +592,10 @@ function MyRequestsTab({
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-[14px] font-semibold text-[#111]">
-                    여행지 ID: {request.place}
+                    {request.title || `여행지 ID: ${request.place}`}
                   </p>
                   <p className="mt-1 text-[12px] text-[#666]">
-                    {request.date} · {request.number_of_people}명
-                    {request.guidance && " · 가이드 희망"}
+                    {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {request.travel_type.slice(0, 3).map((tag: any) => (
@@ -606,7 +618,80 @@ function MyRequestsTab({
             {isExpanded && (
               <div className="mt-4 space-y-3 border-t border-[#E5E5E5] pt-4">
                 <div>
-                  <p className="text-[13px] font-semibold text-[#333]">요청사항</p>
+                  <p className="text-[13px] font-semibold text-[#333]">선택한 지역</p>
+                  <div className="mt-2">
+                    {/* 국가 > 시도 > 시 한 줄로 */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {request.place?.country && (
+                        <label className="flex items-center gap-1">
+                          <input type="checkbox" checked disabled className="accent-[#FFC600] w-3 h-3" />
+                          <span className="text-[12px] text-[#666]">{request.place.country}</span>
+                        </label>
+                      )}
+                      {request.place?.state && (
+                        <label className="flex items-center gap-1">
+                          <input type="checkbox" checked disabled className="accent-[#FFC600] w-3 h-3" />
+                          <span className="text-[12px] text-[#666]">{request.place.state}</span>
+                        </label>
+                      )}
+                      {request.place?.city && (
+                        <label className="flex items-center gap-1">
+                          <input type="checkbox" checked disabled className="accent-[#FFC600] w-3 h-3" />
+                          <span className="text-[12px] text-[#666]">{request.place.city}</span>
+                        </label>
+                      )}
+                    </div>
+                    
+                    {/* 구/동 및 여행지명은 아래에 */}
+                    {(request.place?.district || request.place?.name) && (
+                      <div className="mt-2 flex items-center gap-2 flex-wrap pl-4">
+                        {request.place?.district && (
+                          <label className="flex items-center gap-1">
+                            <input type="checkbox" checked disabled className="accent-[#FFC600] w-3 h-3" />
+                            <span className="text-[12px] text-[#666]">{request.place.district}</span>
+                          </label>
+                        )}
+                        {request.place?.name && (
+                          <label className="flex items-center gap-1">
+                            <input type="checkbox" checked disabled className="accent-[#FFC600] w-3 h-3" />
+                            <span className="text-[12px] text-[#666]">{request.place.name}</span>
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-semibold text-[#333]">여행 기간</p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    {request.date}{request.end_date && ` ~ ${request.end_date}`}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-semibold text-[#333]">가이드 희망여부</p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    {request.guidance ? "예" : "아니오"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-semibold text-[#333]">여행 스타일</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {request.travel_type.map((tag: any) => (
+                      <span
+                        key={tag.id}
+                        className="text-[11px] px-2 py-1 rounded-full bg-[#FFF3B8] text-[#333]"
+                      >
+                        #{tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[13px] font-semibold text-[#333]">세부 요청사항</p>
                   <p className="mt-1 text-[12px] text-[#666] whitespace-pre-wrap">
                     {request.experience || "없음"}
                   </p>
