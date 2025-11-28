@@ -57,24 +57,33 @@ export default function ProposalSendPage() {
   };
   
   // 전체 도시 여행지 조회
-  const { data: allCityPlaces } = useSearchPlaces({
+  const { data: allCityPlaces, refetch: refetchPlaces } = useSearchPlaces({
     country: selectedCountry,
     state: selectedCity,
     enabled: !!selectedCountry && !!selectedCity,
   });
   
+  // 방금 생성한 커스텀 place 저장
+  const [newlyCreatedPlace, setNewlyCreatedPlace] = useState<any>(null);
+  
   // 선택된 지역구로 필터링 (클라이언트 측)
   const filteredPlaces = useMemo(() => {
-    if (!allCityPlaces) return [];
-    if (selectedDistricts.length === 0) return allCityPlaces;
+    let places = allCityPlaces || [];
+    
+    // 방금 생성한 place가 있으면 추가
+    if (newlyCreatedPlace && selectedCity === newlyCreatedPlace.state) {
+      places = [newlyCreatedPlace, ...places];
+    }
+    
+    if (selectedDistricts.length === 0) return places;
     
     // district가 선택되었으면 city 필드로 필터링
-    return allCityPlaces.filter(place => 
+    return places.filter(place => 
       selectedDistricts.some(district => 
         place.city === district || place.district === district
       )
     );
-  }, [allCityPlaces, selectedDistricts]);
+  }, [allCityPlaces, selectedDistricts, newlyCreatedPlace, selectedCity]);
   
   // 일정표 (각 날짜별 스케줄 아이템)
   const [schedules, setSchedules] = useState<Record<number, ScheduleItem[]>>({
@@ -181,11 +190,10 @@ export default function ProposalSendPage() {
 
     try {
       let actualPlaceId = selectedPlaceId;
+      let customPlacePhotoUrl = ""; // 커스텀 place 이미지 URL 저장
       
-      // 커스텀 여행지인 경우 먼저 TravelPlace 생성
-      if (isCustomPlace) {
-        let customPlacePhotoUrl = "";
-        
+      // 커스텀 여행지인 경우 먼저 TravelPlace 생성 (이미 추가 버튼으로 생성했으면 건너뛈)
+      if (isCustomPlace && !newlyCreatedPlace) {
         // 커스텀 여행지 이미지 업로드
         if (customPlacePhoto) {
           const uploadResult = await uploadImage.mutateAsync(customPlacePhoto);
@@ -207,6 +215,19 @@ export default function ProposalSendPage() {
         
         const { data: newPlace } = await api.post("/place/places/create-by-local/", placePayload);
         actualPlaceId = newPlace.id;
+        
+        // 생성된 place를 state에 저장하여 일정 시간표에서 바로 사용 가능하도록
+        setNewlyCreatedPlace({
+          id: newPlace.id,
+          name: newPlace.name,
+          photo: customPlacePhotoUrl,
+          country: newPlace.country,
+          state: newPlace.state,
+          city: newPlace.city,
+          district: newPlace.district,
+          likes_count: 0,
+          view_count: 0,
+        });
       }
       
       let photoUrl = "";
@@ -217,6 +238,10 @@ export default function ProposalSendPage() {
         const uploadResult = await uploadImage.mutateAsync(photoFile);
         photoUrl = uploadResult.url;
         console.log("Image uploaded:", photoUrl);
+      } else if (isCustomPlace && (customPlacePhotoUrl || newlyCreatedPlace?.photo)) {
+        // 직접 추가하기 모드일 때 커스텀 place 이미지를 대표 이미지로 사용
+        photoUrl = customPlacePhotoUrl || newlyCreatedPlace?.photo || "";
+        console.log("Using custom place photo as root photo:", photoUrl);
       } else if (!isCustomPlace && selectedPlaceId) {
         // 기존 여행지 선택 시 대표 이미지를 업로드하지 않았으면 해당 여행지의 이미지 사용
         const selectedPlace = filteredPlaces.find(p => p.id === selectedPlaceId);
@@ -481,18 +506,94 @@ export default function ProposalSendPage() {
                     )}
                   </div>
                   
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsCustomPlace(false);
-                      setCustomPlaceName("");
-                      setCustomPlacePhoto(null);
-                      setCustomPlacePhotoPreview(null);
-                    }}
-                    className="text-[13px] text-gray-500 underline"
-                  >
-                    여행지 목록에서 선택하기
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // 입력 검증
+                        if (!customPlaceName.trim()) {
+                          alert("여행지 이름을 입력해주세요.");
+                          return;
+                        }
+                        if (!selectedCity) {
+                          alert("시/도를 선택해주세요.");
+                          return;
+                        }
+                        
+                        try {
+                          let customPlacePhotoUrl = "";
+                          
+                          // 이미지 업로드
+                          if (customPlacePhoto) {
+                            try {
+                              const uploadResult = await uploadImage.mutateAsync(customPlacePhoto);
+                              customPlacePhotoUrl = uploadResult.url;
+                            } catch (uploadError) {
+                              console.error("이미지 업로드 실패:", uploadError);
+                              // 이미지 업로드 실패해도 place는 생성 계속
+                            }
+                          }
+                          
+                          // TravelPlace 생성
+                          const placePayload: any = {
+                            name: customPlaceName.trim(),
+                            country: selectedCountry,
+                            state: selectedCity,
+                            city: selectedDistricts.length > 0 ? selectedDistricts[0] : "",
+                            district: "",
+                          };
+                          
+                          if (customPlacePhotoUrl) {
+                            placePayload.photo_url = customPlacePhotoUrl;
+                          }
+                          
+                          const { data: newPlace } = await api.post("/place/places/create-by-local/", placePayload);
+                          
+                          // 생성된 place를 state에 저장
+                          const createdPlace = {
+                            id: newPlace.id,
+                            name: newPlace.name,
+                            photo: customPlacePhotoUrl,
+                            country: newPlace.country,
+                            state: newPlace.state,
+                            city: newPlace.city,
+                            district: newPlace.district,
+                            likes_count: 0,
+                            view_count: 0,
+                          };
+                          
+                          setNewlyCreatedPlace(createdPlace);
+                          setSelectedPlaceId(newPlace.id);
+                          
+                          // 모드 종료 및 입력 초기화
+                          setIsCustomPlace(false);
+                          setCustomPlaceName("");
+                          setCustomPlacePhoto(null);
+                          setCustomPlacePhotoPreview(null);
+                          
+                          alert("여행지가 추가되었습니다!");
+                        } catch (error: any) {
+                          console.error("여행지 추가 실패:", error);
+                          alert("여행지 추가에 실패했습니다.");
+                        }
+                      }}
+                      className="flex-1 py-2 rounded-lg bg-[#FFC727] text-white text-[14px] font-semibold"
+                    >
+                      추가
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomPlace(false);
+                        setCustomPlaceName("");
+                        setCustomPlacePhoto(null);
+                        setCustomPlacePhotoPreview(null);
+                      }}
+                      className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 text-[14px]"
+                    >
+                      취소
+                    </button>
+                  </div>
                 </div>
               ) : filteredPlaces && filteredPlaces.length > 0 ? (
                 <>
