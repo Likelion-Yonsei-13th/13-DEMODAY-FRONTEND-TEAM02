@@ -277,6 +277,38 @@ export function useCreateStory() {
   });
 }
 
+// 스토리 수정
+export function useUpdateStory(storyId: number) {
+  return useMutation<StoryData, Error, Partial<StoryCreateData>>({
+    mutationFn: async (body) => {
+      const { data } = await api.patch(endpoints.story.detail(storyId), body);
+      return data;
+    },
+    onSuccess: () => {
+      const queryClient = (window as any).__queryClient;
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ["story", storyId] });
+        queryClient.invalidateQueries({ queryKey: ["stories", "mine"] });
+      }
+    },
+  });
+}
+
+// 스토리 삭제
+export function useDeleteStory() {
+  return useMutation<void, Error, number>({
+    mutationFn: async (storyId) => {
+      await api.delete(endpoints.story.detail(storyId));
+    },
+    onSuccess: () => {
+      const queryClient = (window as any).__queryClient;
+      if (queryClient) {
+        queryClient.invalidateQueries({ queryKey: ["stories", "mine"] });
+      }
+    },
+  });
+}
+
 // 스토리 좋아요 토글
 export function useToggleStoryLike() {
   return useMutation<{ liked: boolean; liked_count: number }, Error, number>({

@@ -2,6 +2,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import TopHeader from "@/components/TopHeader";
@@ -115,7 +116,7 @@ function SearchContent() {
         {!regionReady ? (
           <div className="rounded-[10px] bg-white px-5 py-4 text-[13px] text-gray-500">정확한 지역을 선택하면 해당 지역의 여행자 이야기를 보여드립니다.</div>
         ) : (
-          <TravelerStorySection stories={stories ?? []} />
+          <TravelerStorySection stories={stories ?? []} region={effectiveRegion} />
         )}
 
         {/* ===== 로컬's 제안서 섹션 ===== */}
@@ -159,16 +160,17 @@ function PlaceCard({ place }: { place: TravelPlace }) {
 
 /* -------------------------- 여행자 이야기 리스트 -------------------------- */
 
-function TravelerStorySection({ stories }: { stories: StoryListItem[] }) {
-  // 그룹 토글 형태 유지 (한 그룹만 사용)
+function TravelerStorySection({ stories, region }: { stories: StoryListItem[]; region: { country?: string; state?: string; city?: string; district?: string } }) {
+  // 조회수 높은 상위 5개 선별 (클라이언트 정렬)
+  const top5 = [...(stories ?? [])].sort((a, b) => (b.view_count || 0) - (a.view_count || 0)).slice(0, 5);
   return (
     <section className="bg-white">
-      <TravelerStoryGroup stories={stories} />
+      <TravelerStoryGroup stories={top5} region={region} />
     </section>
   );
 }
 
-function TravelerStoryGroup({ stories }: { stories: StoryListItem[] }) {
+function TravelerStoryGroup({ stories, region }: { stories: StoryListItem[]; region: { country?: string; state?: string; city?: string; district?: string } }) {
   const [open, setOpen] = useState(true);
 
   return (
@@ -196,21 +198,24 @@ function TravelerStoryGroup({ stories }: { stories: StoryListItem[] }) {
       {open && (
         <div className="pt-4 pb-2">
           <div className="space-y-3">
-            {(stories ?? []).slice(0, 5).map((s) => (
-              <div key={s.id} className="flex gap-3">
+            {(stories ?? []).map((s) => (
+              <Link key={s.id} href={`/story/${s.id}`} className="flex gap-3 cursor-pointer hover:opacity-80 transition-opacity">
                 {/* 왼쪽 썸네일 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={absUrl(s.photo_url)} alt={s.title} className="h-[72px] w-[96px] rounded object-cover border" />
                 {/* 오른쪽 텍스트 */}
                 <div className="flex-1">
-                  <p className="text-[12px] font-medium text-gray-900">{s.title}</p>
+                  <p className="text-[12px] font-medium text-gray-900 line-clamp-1">{s.title}</p>
                   <p className="mt-1 text-[11px] text-gray-500 line-clamp-2">{s.preview || s.content?.slice(0, 80)}</p>
                   <div className="mt-1 text-[10px] text-gray-400">좋아요 {s.liked_count} · 조회 {s.view_count}</div>
                 </div>
-              </div>
+              </Link>
             ))}
             {(stories ?? []).length === 0 && (
               <div className="py-6 text-center text-[12px] text-gray-400">해당 지역의 이야기가 없습니다.</div>
+            )}
+            {(stories ?? []).length > 0 && (
+              <Link href={`/stories?${new URLSearchParams({ ...(region.country?{country:region.country}:{}) , ...(region.state?{state:region.state}:{}) , ...(region.city?{city:region.city}:{}) , ...(region.district?{district:region.district}:{}) }).toString()}`} className="mt-2 block text-right text-[12px] text-[#0A2D5E] underline">더보기</Link>
             )}
           </div>
         </div>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api/axios-instance";
 import { endpoints } from "@/lib/api/endpoints";
-import { useToggleStoryLike, useCreateComment } from "@/lib/api/mutations";
+import { useToggleStoryLike, useCreateComment, useDeleteStory } from "@/lib/api/mutations";
 import Image from "next/image";
 
 export default function StoryDetailPage() {
@@ -14,6 +14,9 @@ export default function StoryDetailPage() {
   const queryClient = useQueryClient();
   const storyId = params.id;
   const [commentText, setCommentText] = useState("");
+  
+  // 현재 로그인한 사용자 ID
+  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem("user_id") : null;
 
   // 스토리 상세 조회
   const { data: story, isLoading } = useQuery({
@@ -24,6 +27,21 @@ export default function StoryDetailPage() {
     },
     enabled: !!storyId,
   });
+
+  // 조회수 증가 (페이지 로드시 한번만)
+  useEffect(() => {
+    if (!storyId) return;
+    const incrementView = async () => {
+      try {
+        await api.post(endpoints.story.view(Number(storyId)));
+        // 조회수 증가 후 스토리 정보 새로고침
+        queryClient.invalidateQueries({ queryKey: ["story", storyId] });
+      } catch (error) {
+        console.error("조회수 증가 실패:", error);
+      }
+    };
+    incrementView();
+  }, [storyId, queryClient]);
 
   // 댓글 목록 조회
   const { data: commentsData } = useQuery({
@@ -77,6 +95,23 @@ export default function StoryDetailPage() {
     }
   };
 
+  // 삭제
+  const deleteStory = useDeleteStory();
+  const handleDelete = async () => {
+    if (!confirm("정말 삭제하시겠습니까?")) return;
+    try {
+      await deleteStory.mutateAsync(Number(storyId));
+      alert("삭제되었습니다.");
+      router.push("/profile");
+    } catch (error) {
+      console.error("삭제 실패:", error);
+      alert("삭제에 실패했습니다.");
+    }
+  };
+
+  // 작성자인지 확인
+  const isAuthor = story && currentUserId && String(story.author) === String(currentUserId);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -104,7 +139,25 @@ export default function StoryDetailPage() {
           ← 뒤로
         </button>
         <h1 className="text-[16px] font-semibold text-[#111]">여행 이야기</h1>
-        <div className="w-12" /> {/* 균형 맞추기 */}
+        {isAuthor ? (
+          <div className="flex gap-2">
+            <button
+              onClick={() => router.push(`/story/edit/${storyId}`)}
+              className="text-[13px] text-[#FFC727] font-medium"
+            >
+              수정
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteStory.isPending}
+              className="text-[13px] text-[#FF3B30] font-medium disabled:opacity-50"
+            >
+              {deleteStory.isPending ? "삭제중" : "삭제"}
+            </button>
+          </div>
+        ) : (
+          <div className="w-12" />
+        )}
       </header>
 
       {/* 본문 */}
