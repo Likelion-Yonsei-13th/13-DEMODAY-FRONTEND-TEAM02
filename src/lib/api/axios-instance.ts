@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000",
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "https://d-tour.kr",
   timeout: 30000, // 30초로 증가 (이미지 업로드용)
   withCredentials: true, // 쿠키 기반 인증 활성화 (HttpOnly 쿠키 사용)
 });
