@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { useRequests } from "@/lib/api/queries.document";
 
-type TabKey = "recent" | "category" | "saved" | "confirmed";
+type TabKey = "recent" | "category" | "saved" | "confirmed" | "myRequests";
 
 type Proposal = {
   id: number;
@@ -31,7 +33,9 @@ const MOCK_PROPOSALS: Proposal[] = [
 ];
 
 export default function ProposalTraveler() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("recent");
+  const { data: myRequests, isLoading: requestsLoading } = useRequests();
 
   // 분류 탭 상태
   const [hoveredId, setHoveredId] = useState<number | null>(null);
@@ -47,18 +51,31 @@ export default function ProposalTraveler() {
       <header className="border-b border-[#E5E5E5] px-5 pt-10 pb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-[18px] font-bold text-[#111]">제안서</h1>
-          <button aria-label="알림" className="p-1">
-            <Image src="/bell.svg" alt="알림" width={20} height={20} />
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => router.push('/request')}
+              className="flex items-center gap-1 text-[13px] font-semibold text-[#FFC727]"
+              aria-label="제안서 요청하기"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 5V15M5 10H15" stroke="#FFC727" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              요청
+            </button>
+            <button aria-label="알림" className="p-1">
+              <Image src="/bell.svg" alt="알림" width={20} height={20} />
+            </button>
+          </div>
         </div>
 
         {/* 탭 바 */}
-        <nav className="mt-4 flex text-[13px] font-semibold">
+        <nav className="mt-4 flex text-[13px] font-semibold overflow-x-auto">
           {[
             { key: "recent", label: "최근 받은 제안서" },
             { key: "category", label: "분류" },
             { key: "saved", label: "저장" },
             { key: "confirmed", label: "확정" },
+            { key: "myRequests", label: "내가 제안한 제안서" },
           ].map((tab) => {
             const active = activeTab === tab.key;
             return (
@@ -103,6 +120,13 @@ export default function ProposalTraveler() {
         {activeTab === "saved" && <SavedTab proposals={MOCK_PROPOSALS} />}
 
         {activeTab === "confirmed" && <ConfirmedTab />}
+
+        {activeTab === "myRequests" && (
+          <MyRequestsTab 
+            requests={myRequests || []} 
+            isLoading={requestsLoading}
+          />
+        )}
       </main>
 
       {/* 삭제 확인 모달 (분류 탭용) */}
@@ -495,6 +519,117 @@ function ConfirmedTab() {
       <p className="text-[14px] text-[#555]">
         확정된 제안서가 아직 없습니다.
       </p>
+    </section>
+  );
+}
+
+/* =================== 내가 제안한 제안서 탭 =================== */
+
+function MyRequestsTab({ 
+  requests, 
+  isLoading 
+}: { 
+  requests: any[]; 
+  isLoading: boolean;
+}) {
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  if (isLoading) {
+    return (
+      <section className="pt-16 text-center">
+        <p className="text-[14px] text-[#555]">로딩 중...</p>
+      </section>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <section className="pt-16">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
+            <Image src="/check.svg" alt="체크" width={32} height={32} />
+          </div>
+          <p className="text-[14px] text-[#555]">제안한 요청서가 없습니다</p>
+          <button 
+            onClick={() => window.location.href = '/request'}
+            className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
+          >
+            제안서 요청하기
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="pb-4">
+      {requests.map((request) => {
+        const isExpanded = expandedId === request.id;
+        
+        return (
+          <article
+            key={request.id}
+            className="border-b border-[#E5E5E5] py-4 last:border-b-0"
+          >
+            {/* 기본 요약 카드 부분 */}
+            <div
+              className="cursor-pointer"
+              onClick={() => setExpandedId(isExpanded ? null : request.id)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-[14px] font-semibold text-[#111]">
+                    여행지 ID: {request.place}
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    {request.date} · {request.number_of_people}명
+                    {request.guidance && " · 가이드 희망"}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {request.travel_type.slice(0, 3).map((tag: any) => (
+                      <span
+                        key={tag.id}
+                        className="text-[11px] text-[#999]"
+                      >
+                        #{tag.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <button className="text-[18px] text-gray-400">
+                  {isExpanded ? '▲' : '▼'}
+                </button>
+              </div>
+            </div>
+
+            {/* 펼쳐진 상세 영역 */}
+            {isExpanded && (
+              <div className="mt-4 space-y-3 border-t border-[#E5E5E5] pt-4">
+                <div>
+                  <p className="text-[13px] font-semibold text-[#333]">요청사항</p>
+                  <p className="mt-1 text-[12px] text-[#666] whitespace-pre-wrap">
+                    {request.experience || "없음"}
+                  </p>
+                </div>
+                
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 rounded-lg bg-[#FFC727] py-2 text-[13px] font-semibold text-white"
+                    onClick={() => window.location.href = `/request/${request.id}/edit`}
+                  >
+                    수정하기
+                  </button>
+                  <button
+                    className="flex-1 rounded-lg border border-gray-300 py-2 text-[13px] font-semibold text-gray-700"
+                  >
+                    삭제하기
+                  </button>
+                </div>
+              </div>
+            )}
+          </article>
+        );
+      })}
     </section>
   );
 }

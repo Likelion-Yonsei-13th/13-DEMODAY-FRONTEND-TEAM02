@@ -1,29 +1,54 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRequests } from "@/lib/api/queries.document";
+import api from "@/lib/api/axios-instance";
 
-type RequestItem = {
-  id: number;
-  title: string;
-  area: string;
-  tags: string[];
+type LocalProfile = {
+  regions: string[]; // ["Seoul", "Gangnam-gu"] 형태
 };
 
-const REQUESTS: RequestItem[] = [
-  {
-    id: 1,
-    title: "종로구 한국체험",
-    area: "종로구, 중구",
-    tags: ["힐링여행", "빠빠빡", "로컬맛집"],
-  },
-];
-
 export default function ProposalLocal() {
-  const [activeTab, setActiveTab] = useState<"recent" | "unread" | "mine">(
-    "recent"
-  );
+  const [activeTab, setActiveTab] = useState<"recent" | "unread" | "mine">("recent");
+  const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null);
+  const [filteredRequestIds, setFilteredRequestIds] = useState<number[]>([]);
+  
+  const { data: allRequests, isLoading } = useRequests();
+
+  // 로컬 프로필 불러오기
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data } = await api.get('/account/profile/local/');
+        setLocalProfile(data);
+      } catch (error) {
+        console.error('프로필 로드 실패:', error);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  // 지역 필터링: 로컬의 regions와 요청서의 place 지역 비교
+  useEffect(() => {
+    if (!localProfile || !allRequests) return;
+
+    const filtered = allRequests.filter(request => {
+      // place의 지역 정보 가져오기 (TravelPlace 모델에서 city, district)
+      // regions: ["Seoul"] 또는 ["Seoul", "Gangnam-gu"]
+      const regions = localProfile.regions;
+      
+      // 예시: regions = ["Seoul"] -> 서울의 모든 요청서
+      // regions = ["Seoul", "Gangnam-gu"] -> 서울 강남구의 요청서만
+      
+      // 여기서는 간단하게 모든 요청서를 보여주게 처리
+      // 실제로는 place ID로 TravelPlace 조회해서 비교해야 함
+      return true;
+    });
+
+    setFilteredRequestIds(filtered.map(r => r.id));
+  }, [localProfile, allRequests]);
 
   return (
     <div className="mx-auto w-full max-w-[420px] bg-white pb-24">
@@ -66,46 +91,59 @@ export default function ProposalLocal() {
 
       {/* LIST */}
       <main className="px-5 pt-4">
-        {REQUESTS.map((r) => (
-          <article
-            key={r.id}
-            className="border-b border-[#EDEDED] py-4 last:border-none"
-          >
-            <div className="flex items-start justify-between">
-              {/* LEFT */}
-              <div>
-                <p className="text-[14px] font-semibold text-[#111]">
-                  {r.title}
-                </p>
-                <p className="mt-[2px] text-[12px] text-[#555]">{r.area}</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {r.tags.map((tag, i) => (
-                    <span
-                      key={i}
-                      className="text-[11px] text-[#999] whitespace-nowrap"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
+        {isLoading ? (
+          <div className="text-center py-10 text-gray-500">로딩 중...</div>
+        ) : !allRequests || allRequests.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">요청서가 없습니다.</div>
+        ) : (
+          allRequests.map((request) => (
+            <article
+              key={request.id}
+              className="border-b border-[#EDEDED] py-4 last:border-none"
+            >
+              <div className="flex items-start justify-between">
+                {/* LEFT */}
+                <div>
+                  <p className="text-[14px] font-semibold text-[#111]">
+                    여행지 ID: {request.place}
+                  </p>
+                  <p className="mt-[2px] text-[12px] text-[#555]">
+                    {request.date} · {request.number_of_people}명
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {request.travel_type.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag.id}
+                        className="text-[11px] text-[#999] whitespace-nowrap"
+                      >
+                        #{tag.name}
+                      </span>
+                    ))}
+                  </div>
+                  {request.experience && (
+                    <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
+                      {request.experience}
+                    </p>
+                  )}
                 </div>
-              </div>
 
-              {/* 제안서 보내기 버튼 */}
-              <Link
-                href="/proposal/send"
-                className="flex flex-col items-center text-[11px] text-[#FFC727] font-semibold"
-              >
-                <Image
-                  src="/send-yellow.svg"
-                  alt="제안"
-                  width={22}
-                  height={22}
-                />
-                제안서 보내기
-              </Link>
-            </div>
-          </article>
-        ))}
+                {/* 제안서 보내기 버튼 */}
+                <Link
+                  href={`/proposal/send?requestId=${request.id}`}
+                  className="flex flex-col items-center text-[11px] text-[#FFC727] font-semibold"
+                >
+                  <Image
+                    src="/send-yellow.svg"
+                    alt="제안"
+                    width={22}
+                    height={22}
+                  />
+                  제안서 보내기
+                </Link>
+              </div>
+            </article>
+          ))
+        )}
       </main>
     </div>
   );
