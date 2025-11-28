@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useRootDetail } from "@/lib/api/queries.document";
 import { absUrl } from "@/lib/api/queries.place";
+import PurchaseConfirmModal from "@/components/PurchaseConfirmModal";
 
 export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -14,12 +15,20 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
   const { data: root, isLoading } = useRootDetail(rootId);
   const [selectedDay, setSelectedDay] = useState(1);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [isPurchased, setIsPurchased] = useState(false);
 
-  // 현재 로그인한 사용자 ID 가져오기
+  // 현재 로그인한 사용자 ID 가져오기 및 구매 여부 확인
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     setCurrentUserId(userId);
-  }, []);
+    
+    // 이미 구매한 제안서인지 확인
+    const purchased = JSON.parse(localStorage.getItem("purchased_roots") || "[]");
+    if (purchased.includes(rootId)) {
+      setIsPurchased(true);
+    }
+  }, [rootId]);
 
   if (isLoading) {
     return (
@@ -45,8 +54,8 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
   const placeName = place?.name || place?.city || '여행지';
   const placeAddress = place ? `${place.country}, ${place.state}, ${place.city}${place.district ? ', ' + place.district : ''}` : '';
   
-  // 현재 사용자가 제안서 작성자인지 확인
-  const isOwner = currentUserId && root.founder && String(root.founder.uuid) === currentUserId;
+  // 현재 사용자가 제안서 작성자인지 확인 (항상 boolean)
+  const isOwner = !!(currentUserId && root.founder && String(root.founder.uuid) === currentUserId);
 
   // 실제 일정 데이터
   const scheduleData = root.schedule || {};
@@ -59,6 +68,26 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
         label: `${i + 1}일차`
       }))
     : [{ day: 1, label: "1일차" }];
+  
+  // 구매 처리 함수
+  const handlePurchaseConfirm = async () => {
+    try {
+      // TODO: 백엔드 API 연동 시연동
+      // const { data } = await api.post(`/document/roots/${rootId}/purchase/`);
+      // 임시로 구매 완료 시뮬레이션
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setIsPurchased(true);
+      // 로컬 스토리지에 구매 내역 저장 (Confirmed 탭에서 사용)
+      const purchased = JSON.parse(localStorage.getItem("purchased_roots") || "[]");
+      if (!purchased.includes(rootId)) {
+        purchased.push(rootId);
+        localStorage.setItem("purchased_roots", JSON.stringify(purchased));
+      }
+    } catch (error) {
+      console.error("구매 실패:", error);
+      throw new Error("구매에 실패했습니다. 다시 시도해 주세요.");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-white pb-24">
@@ -228,15 +257,36 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           </section>
         )}
 
-        {/* 제안하기 버튼 (작성자가 아닐 때만 표시) */}
+        {/* 제안서 구매 버튼 (작성자가 아닐 때만 표시) */}
         {!isOwner && (
           <section className="px-5 mt-8 mb-10">
-            <button className="w-full h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold hover:bg-[#FFB700] transition-colors">
-              제안하기
-            </button>
+            {isPurchased ? (
+              <button 
+                disabled 
+                className="w-full h-12 rounded-[6px] bg-[#E5E5E5] text-[#999] text-[15px] font-semibold cursor-not-allowed"
+              >
+                구매 완료
+              </button>
+            ) : (
+              <button 
+                onClick={() => setIsPurchaseModalOpen(true)}
+                className="w-full h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold hover:bg-[#FFB700] transition-colors"
+              >
+                제안서 구매하기 (1000 포인트)
+              </button>
+            )}
           </section>
         )}
       </div>
+      
+      {/* 구매 확인 모달 (최상단 레이어) */}
+      <PurchaseConfirmModal
+        isOpen={isPurchaseModalOpen}
+        onClose={() => setIsPurchaseModalOpen(false)}
+        onConfirm={handlePurchaseConfirm}
+        rootTitle={root?.title || placeName}
+        points={1000}
+      />
     </div>
   );
 }

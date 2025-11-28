@@ -251,3 +251,35 @@ export function useUploadRootImage() {
     },
   });
 }
+
+// ---- Purchase Functionality (여행자가 제안서 구매) ----
+export function usePurchaseRoot() {
+  const qc = useQueryClient();
+  return useMutation<any, any, number>({
+    mutationFn: async (rootId) => {
+      // TODO: 백엔드 API 말 구현 대기 중
+      // const { data } = await api.post(`/document/roots/${rootId}/purchase/`);
+      // 실제 계약서 구매 로직 처리는 다른 API로 처리될 수 있음
+      console.warn("usePurchaseRoot: 백엔드 API가 아직 구현되지 않았습니다.");
+      return { success: true };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["roots"] });
+    },
+  });
+}
+
+export function useCheckRootPurchased(rootId?: number) {
+  return useQuery<boolean>({
+    enabled: !!rootId,
+    queryKey: ["root-purchased", rootId],
+    queryFn: async () => {
+      if (!rootId) return false;
+      // TODO: 백엔드 API 말 구현 대기 중
+      // const { data } = await api.get(`/document/roots/${rootId}/is-purchased/`);
+      // return data.is_purchased;
+      console.warn("useCheckRootPurchased: 백엔드 API가 아직 구현되지 않았습니다.");
+      return false;
+    },
+  });
+}

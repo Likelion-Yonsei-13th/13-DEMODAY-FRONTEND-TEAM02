@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useRequests } from "@/lib/api/queries.document";
+import { useRequests, useRoots, Root } from "@/lib/api/queries.document";
 
 type TabKey = "recent" | "category" | "saved" | "confirmed" | "myRequests";
 
@@ -526,12 +526,108 @@ function SavedTab({ proposals }: { proposals: Proposal[] }) {
 
 /* =================== 확정 탭 =================== */
 
+type PurchasedProposal = {
+  id: number;
+  title: string;
+  founder: {
+    uuid: string;
+    display_name: string;
+    photo_url: string;
+  };
+  place?: {
+    name: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  };
+  photo?: string;
+};
+
 function ConfirmedTab() {
+  const router = useRouter();
+  const { data: allRoots, isLoading } = useRoots();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // localStorage에서 여행자 구매 날짜 가져오기
+  useEffect(() => {
+    const userId = localStorage.getItem("user_id");
+    setCurrentUserId(userId);
+    
+    // 구매된 제안서 ID 가져오기 (마기마일나 indexedDB, 또는 API로 관리)
+    const purchased = JSON.parse(localStorage.getItem("purchased_roots") || "[]");
+    setPurchasedRootIds(purchased);
+  }, []);
+  
+  const [purchasedRootIds, setPurchasedRootIds] = useState<number[]>([]);
+  
+  // 구매된 제안서만 필터링
+  const purchasedProposals = useMemo(() => {
+    if (!allRoots || purchasedRootIds.length === 0) return [];
+    return allRoots.filter((root: Root) => purchasedRootIds.includes(root.id));
+  }, [allRoots, purchasedRootIds]);
+  
+  if (isLoading) {
+    return (
+      <section className="pt-16 text-center">
+        <p className="text-[14px] text-[#555]">로드 중...</p>
+      </section>
+    );
+  }
+  
+  if (purchasedProposals.length === 0) {
+    return (
+      <section className="pt-16">
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
+            <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
+          </div>
+          <p className="text-[14px] text-[#555]">구매된 제안서가 없습니다</p>
+          <button 
+            onClick={() => router.push('/proposal')}
+            className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
+          >
+            제안서 둘러보기
+          </button>
+        </div>
+      </section>
+    );
+  }
+  
   return (
-    <section className="flex flex-col items-center gap-4 pt-20 text-center">
-      <p className="text-[14px] text-[#555]">
-        확정된 제안서가 아직 없습니다.
-      </p>
+    <section className="pb-4">
+      {purchasedProposals.map((proposal: Root) => (
+        <article
+          key={proposal.id}
+          className="border-b border-[#E5E5E5] py-4 last:border-b-0"
+          onClick={() => router.push(`/proposal/${proposal.id}`)}
+        >
+          <div className="cursor-pointer">
+            <div className="flex items-center gap-3">
+              {/* 로컬 단상 */}
+              <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5] flex items-center justify-center text-[18px] font-bold text-white">
+                {proposal.founder?.display_name?.charAt(0)?.toUpperCase() || '✢'}
+              </div>
+              
+              <div className="flex-1">
+                <p className="text-[11px] text-[#888]">
+                  {typeof proposal.place === 'object'
+                    ? proposal.place?.name || proposal.place?.city || '여행지'
+                    : '여행지'}
+                </p>
+                <p className="mt-[2px] text-[14px] font-semibold text-[#111]">
+                  {proposal.title || '제목 없음'}
+                </p>
+                <p className="mt-[2px] text-[12px] text-[#666]">
+                  {proposal.founder?.display_name || '로컬'}
+                </p>
+              </div>
+              
+              {/* 오른쪽 화살표 */}
+              <Image src="/expand_left.svg" alt="" width={14} height={14} className="rotate-180" />
+            </div>
+          </div>
+        </article>
+      ))}
     </section>
   );
 }
