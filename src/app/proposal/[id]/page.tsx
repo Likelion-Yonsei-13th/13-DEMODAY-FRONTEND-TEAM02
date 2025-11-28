@@ -52,13 +52,13 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
   const scheduleData = root.schedule || {};
   const daysCount = Object.keys(scheduleData).length;
   
-  // 날짜 버튼 데이터 생성
+  // 날짜 버튼 데이터 생성 (1일차, 2일차, 3일차...)
   const daysData = daysCount > 0 
     ? Array.from({ length: daysCount }, (_, i) => ({
         day: i + 1,
-        label: String(i + 4).padStart(2, '0')  // 11월 04일부터 시작
+        label: `${i + 1}일차`
       }))
-    : [{ day: 1, label: "04" }];
+    : [{ day: 1, label: "1일차" }];
 
   return (
     <div className="min-h-screen bg-white pb-24">
@@ -159,8 +159,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
                   ${active ? "bg-[#FFC727] text-[#111]" : "bg-[#E5E5E5] text-[#111]"}
                 `}
               >
-                <span className="text-[11px]">11월</span>
-                <span className="text-[14px] font-bold">{d.label}</span>
+                <span className="text-[12px] font-semibold">{d.label}</span>
               </button>
             );
           })}
@@ -229,11 +228,11 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           </section>
         )}
 
-        {/* 제안서 구매 버튼 (작성자가 아닐 때만 표시) */}
+        {/* 제안하기 버튼 (작성자가 아닐 때만 표시) */}
         {!isOwner && (
           <section className="px-5 mt-8 mb-10">
-            <button className="w-full h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold">
-              제안서 구매하기 (1000 포인트)
+            <button className="w-full h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold hover:bg-[#FFB700] transition-colors">
+              제안하기
             </button>
           </section>
         )}

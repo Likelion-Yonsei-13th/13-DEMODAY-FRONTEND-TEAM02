@@ -21,7 +21,11 @@ export type TravelPlace = {
 
 export type Request = {
   id: number;
-  user: { uuid: string };
+  user: {
+    uuid: string;
+    display_name: string;
+    photo_url: string;
+  };
   place: TravelPlace;
   title?: string;
   date: string;
@@ -58,7 +62,11 @@ export type RequestUpdateInput = {
 
 export type Root = {
   id: number;
-  founder: { uuid: string };
+  founder: {
+    uuid: string;
+    display_name: string;
+    photo_url: string;
+  };
   place: TravelPlace | number;
   title?: string;
   photo?: string;

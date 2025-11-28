@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useCreateStory, useUploadImage } from "@/lib/api/mutations";
+import { useCreateStory, useUploadImage, useCreatePlace } from "@/lib/api/mutations";
+import { STATE_CITIES } from "@/lib/locationData";
+
+const STATES = Object.keys(STATE_CITIES);
 
 export default function CreateStoryPage() {
   const router = useRouter();
   const createStory = useCreateStory();
+  const createPlace = useCreatePlace();
   const uploadImage = useUploadImage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,6 +27,12 @@ export default function CreateStoryPage() {
 
   const [previewImage, setPreviewImage] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // 시/도가 변경되면 시/구 데이터 갱신
+  const availableCities = useMemo(() => {
+    if (!formData.state) return [];
+    return STATE_CITIES[formData.state] || [];
+  }, [formData.state]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,14 +70,13 @@ export default function CreateStoryPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.title || !formData.content || !formData.country) {
-      alert("제목, 내용, 국가는 필수입니다.");
+    if (!formData.title || !formData.content || !formData.country || !formData.state || !formData.city) {
+      alert("제목, 내용, 국가, 시/도, 시/구는 멋식입니다.");
       return;
     }
 
     try {
-      // 선택된 파일이 있으면 먼저 업로드해서 URL을 받음
+      // 1. 이미지 업로드 (먼저 업로드 후 장소 생성)
       let photoUrl = formData.photo_url;
       if (selectedFile) {
         console.log("[업로드] 파일 업로드 시작:", selectedFile.name);
@@ -85,9 +94,33 @@ export default function CreateStoryPage() {
         }
       }
 
+      // 2. 장소 생성 (업로드된 이미지 URL 사용)
+      let placeId: number | undefined = undefined;
+      try {
+        console.log("[장소 생성] 시작:", formData);
+        const placeData = {
+          name: formData.title,
+          photo_url: photoUrl || "", // 업로드된 URL 또는 비링른 을른 마
+          country: formData.country,
+          state: formData.state,
+          city: formData.city,
+          district: formData.district || "",
+        };
+        console.log("[장소 데이터]", placeData);
+        const place = await createPlace.mutateAsync(placeData);
+        placeId = place.id;
+        console.log("[장소 생성 성공]", placeId);
+      } catch (placeError: any) {
+        console.error("[장소 생성 실패]", placeError.response?.data || placeError.message);
+        alert("장소 생성 실패: " + (placeError.response?.data?.detail || placeError.message));
+        return;
+      }
+
+      // 3. 스토리 생성
       const storyData = {
         ...formData,
         photo_url: photoUrl,
+        place: placeId,
       };
       console.log("[스토리 생성] 전송 데이터:", storyData);
       const result = await createStory.mutateAsync(storyData);
@@ -117,10 +150,10 @@ export default function CreateStoryPage() {
         <h1 className="text-[16px] font-semibold text-[#111]">여행 이야기 작성</h1>
         <button
           onClick={handleSubmit}
-          disabled={createStory.isPending || uploadImage.isPending}
+          disabled={createStory.isPending || uploadImage.isPending || createPlace.isPending}
           className="text-[14px] font-semibold text-[#FFC727] disabled:opacity-50"
         >
-          {uploadImage.isPending ? "업로드 중..." : createStory.isPending ? "작성 중..." : "완료"}
+          {createPlace.isPending ? "장소 생성 중..." : uploadImage.isPending ? "업로드 중..." : createStory.isPending ? "작성 중..." : "완료"}
         </button>
       </header>
 
@@ -176,32 +209,43 @@ export default function CreateStoryPage() {
 
         <div className="mb-6">
           <label className="mb-2 block text-[14px] font-semibold text-[#111]">
-            시/도
+            시/도 <span className="text-[#FF3B30]">*</span>
           </label>
-          <input
-            type="text"
+          <select
             value={formData.state}
             onChange={(e) =>
-              setFormData({ ...formData, state: e.target.value })
+              setFormData({ ...formData, state: e.target.value, city: "" }) // state 변경 시 city 초기화
             }
-            placeholder="예: 서울특별시"
-            className="w-full rounded-[8px] border border-[#E5E5E5] px-4 py-3 text-[14px] text-[#111] placeholder:text-[#999] focus:border-[#FFC727] focus:outline-none"
-          />
+            className="w-full rounded-[8px] border border-[#E5E5E5] px-4 py-3 text-[14px] text-[#111] focus:border-[#FFC727] focus:outline-none"
+          >
+            <option value="">선택하세요</option>
+            {STATES.map((state) => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="mb-6">
           <label className="mb-2 block text-[14px] font-semibold text-[#111]">
-            시/구
+            시/구 <span className="text-[#FF3B30]">*</span>
           </label>
-          <input
-            type="text"
+          <select
             value={formData.city}
             onChange={(e) =>
               setFormData({ ...formData, city: e.target.value })
             }
-            placeholder="예: 강남구"
-            className="w-full rounded-[8px] border border-[#E5E5E5] px-4 py-3 text-[14px] text-[#111] placeholder:text-[#999] focus:border-[#FFC727] focus:outline-none"
-          />
+            disabled={!formData.state}
+            className="w-full rounded-[8px] border border-[#E5E5E5] px-4 py-3 text-[14px] text-[#111] focus:border-[#FFC727] focus:outline-none disabled:bg-[#F5F5F5] disabled:text-[#999]"
+          >
+            <option value="">선택하세요</option>
+            {availableCities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="mb-6">

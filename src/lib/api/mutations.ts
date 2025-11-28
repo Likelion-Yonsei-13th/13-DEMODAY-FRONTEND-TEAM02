@@ -27,6 +27,28 @@ type UserProfileData = {
   travel_style: string;
 };
 
+// --- Place 타입
+type PlaceData = {
+  id: number;
+  name: string;
+  photo: string;
+  country: string;
+  state: string;
+  city: string;
+  district: string;
+  likes_count: number;
+  view_count: number;
+};
+
+type PlaceCreateData = {
+  name: string;
+  photo?: string;
+  country: string;
+  state: string;
+  city: string;
+  district?: string;
+};
+
 // --- 스토리 타입
 type StoryData = {
   id: number;
@@ -260,6 +282,17 @@ export function useUploadImage() {
   });
 }
 
+// 장소 생성
+export function useCreatePlace() {
+  return useMutation<PlaceData, Error, PlaceCreateData>({
+    mutationFn: async (body) => {
+      // create-by-local 엔드포인트 사용
+      const { data } = await api.post("/place/places/create-by-local/", body);
+      return data;
+    },
+  });
+}
+
 // 스토리 생성
 export function useCreateStory() {
   return useMutation<StoryData, Error, StoryCreateData>({
@@ -268,7 +301,7 @@ export function useCreateStory() {
       return data;
     },
     onSuccess: () => {
-      // 스토리 목록 캠시 무효화
+      // 스토리 목록 캠닜 무효화
       const queryClient = (window as any).__queryClient;
       if (queryClient) {
         queryClient.invalidateQueries({ queryKey: ["stories", "mine"] });
