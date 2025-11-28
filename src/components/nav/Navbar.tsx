@@ -8,7 +8,7 @@ const TABS = [
   { href: "/",     icon: "/home.svg",     label: "홈" },
   { href: "/proposal", icon: "/proposal.svg", label: "제안서" },
   { href: "/wish",     icon: "/wish.svg",     label: "위시" },
-  { href: "/chatting", icon: "/chatting.svg", label: "채팅" },
+  { href: "/chat", icon: "/chatting.svg", label: "채팅" },
   { href: "/profile",  icon: "/profile.svg",  label: "프로필" },
 ];
 
