@@ -59,7 +59,10 @@ export type RequestUpdateInput = {
 export type Root = {
   id: number;
   founder: { uuid: string };
-  place: number;
+  place: TravelPlace | number;
+  title?: string;
+  photo?: string;
+  schedule?: any;
   number_of_people: number;
   guidance: boolean;
   travel_type: ThemeTag[];
@@ -69,7 +72,10 @@ export type Root = {
 };
 
 export type RootCreateInput = {
-  place: number;
+  place_id: number;
+  title?: string;
+  photo?: string;
+  schedule?: any;
   number_of_people: number;
   guidance?: boolean;
   travel_type_ids?: number[];
@@ -78,6 +84,7 @@ export type RootCreateInput = {
 
 export type RootUpdateInput = {
   place?: number;
+  title?: string;
   number_of_people?: number;
   guidance?: boolean;
   travel_type_ids?: number[];
@@ -219,6 +226,20 @@ export function useDeleteRoot() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["roots"] });
+    },
+  });
+}
+
+// ---- Image Upload for Root ----
+export function useUploadRootImage() {
+  return useMutation<{ url: string; filename: string }, any, File>({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      const { data } = await api.post("/document/upload-image/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
     },
   });
 }

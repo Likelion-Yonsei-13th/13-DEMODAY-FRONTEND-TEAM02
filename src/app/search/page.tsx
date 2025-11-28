@@ -145,8 +145,14 @@ function PlaceCard({ place }: { place: TravelPlace }) {
   return (
     <Link href={`/places/${place.id}`} className="w-[260px] flex-none overflow-hidden rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:opacity-80 transition-opacity">
       <div className="relative h-[150px] w-full overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={absUrl(place.photo)} alt={place.name} className="h-full w-full object-cover" />
+        {place.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={absUrl(place.photo)} alt={place.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-gray-200 flex items-center justify-center">
+            <span className="text-gray-400 text-[12px]">이미지 없음</span>
+          </div>
+        )}
       </div>
       <div className="border-t border-gray-100 px-3 py-3">
         <p className="text-[11px] text-gray-500">{place.city} {place.district}</p>

@@ -26,8 +26,14 @@ function PlacesContent() {
         <div className="grid grid-cols-2 gap-3">
           {(places ?? []).map((p) => (
             <button key={p.id} className="rounded-[10px] bg-white text-left shadow" onClick={() => router.push(`/places/${p.id}`)}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={absUrl(p.photo)} alt={p.name} className="h-[120px] w-full rounded-t-[10px] object-cover" />
+              {p.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={absUrl(p.photo)} alt={p.name} className="h-[120px] w-full rounded-t-[10px] object-cover" />
+              ) : (
+                <div className="h-[120px] w-full rounded-t-[10px] bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-400 text-[12px]">이미지 없음</span>
+                </div>
+              )}
               <div className="px-3 py-2">
                 <div className="text-[11px] text-gray-500">{p.city} {p.district}</div>
                 <div className="mt-1 truncate text-[13px] font-semibold">{p.name}</div>

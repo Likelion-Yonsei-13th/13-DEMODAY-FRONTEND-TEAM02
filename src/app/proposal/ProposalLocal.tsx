@@ -70,9 +70,19 @@ export default function ProposalLocal() {
       <header className="border-b border-[#E5E5E5] px-5 pt-10 pb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-[18px] font-bold text-[#111]">요청서</h1>
-          <button aria-label="알림" className="p-1">
-            <Image src="/bell.svg" alt="알림" width={20} height={20} />
-          </button>
+          <div className="flex items-center gap-3">
+            {activeTab === "mine" && (
+              <Link
+                href="/proposal/send"
+                className="text-[13px] font-medium text-[#FFC727] border border-[#FFC727] px-3 py-1.5 rounded-lg hover:bg-[#FFC727] hover:text-white transition-colors"
+              >
+                + 제안서 만들기
+              </Link>
+            )}
+            <button aria-label="알림" className="p-1">
+              <Image src="/bell.svg" alt="알림" width={20} height={20} />
+            </button>
+          </div>
         </div>
 
         {/* TAB BAR */}
@@ -107,50 +117,40 @@ export default function ProposalLocal() {
       <main className="px-5 pt-4">
         {activeTab === "mine" ? (
           // "내 제안서" 탭: 로컬이 작성한 Root 목록
-          rootsLoading ? (
-            <div className="text-center py-10 text-gray-500">로딩 중...</div>
-          ) : myRoots.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">작성한 제안서가 없습니다.</div>
-          ) : (
-            myRoots.map((root) => (
-              <article
-                key={root.id}
-                className="border-b border-[#EDEDED] py-4 last:border-none"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-[14px] font-semibold text-[#111]">
-                      제안서 #{root.id}{root.place && ` - ${typeof root.place === 'object' ? root.place.name || root.place.city : root.place}`}
-                    </p>
-                    <p className="mt-[2px] text-[12px] text-[#555]">
-                      {root.number_of_people}명 {root.guidance && "· 가이드 포함"}
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {root.travel_type.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="text-[11px] text-[#999] whitespace-nowrap"
-                        >
-                          #{tag.name}
-                        </span>
-                      ))}
-                    </div>
-                    {root.experience && (
-                      <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
-                        {root.experience}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    className="text-[11px] text-[#FFC727] font-semibold px-3 py-1 border border-[#FFC727] rounded"
-                    onClick={() => alert(`제안서 #${root.id} 상세보기`)}
+          <>
+            {rootsLoading ? (
+              <div className="text-center py-10 text-gray-500">로딩 중...</div>
+            ) : myRoots.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">작성한 제안서가 없습니다.</div>
+            ) : (
+              myRoots.map((root) => (
+                <article
+                  key={root.id}
+                  className="border-b border-[#EDEDED] py-4 last:border-none"
                   >
-                    상세보기
-                  </button>
-                </div>
-              </article>
-            ))
-          )
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-[14px] font-semibold text-[#111]">
+                          {root.title || 
+                            (root.place && typeof root.place === 'object' 
+                              ? (root.place.name || root.place.city || `제안서 #${root.id}`)
+                              : `제안서 #${root.id}`)}
+                        </p>
+                        <p className="mt-[2px] text-[12px] text-[#555]">
+                          추천 인원 {root.number_of_people}명
+                        </p>
+                      </div>
+                      <Link
+                        href={`/proposal/${root.id}`}
+                        className="text-[11px] text-white bg-[#FFC727] font-semibold px-3 py-1 rounded whitespace-nowrap flex items-center ml-2"
+                      >
+                        보기
+                      </Link>
+                    </div>
+                </article>
+              ))
+            )}
+          </>
         ) : (
           // "최근 받은 요청서" / "안읽은 요청서" 탭: Request 목록
           isLoading ? (

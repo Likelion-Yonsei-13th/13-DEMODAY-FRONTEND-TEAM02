@@ -61,8 +61,14 @@ export default function PlaceDetailPage() {
         <button className="mb-3 text-[13px] text-gray-500" onClick={() => router.back()}>← 목록으로</button>
         {place && (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={absUrl(place.photo)} alt={place.name} className="h-[200px] w-full rounded object-cover" />
+            {place.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={absUrl(place.photo)} alt={place.name} className="h-[200px] w-full rounded object-cover" />
+            ) : (
+              <div className="h-[200px] w-full rounded bg-gray-200 flex items-center justify-center">
+                <span className="text-gray-400 text-[14px]">이미지 없음</span>
+              </div>
+            )}
             <div className="mt-3">
               <div className="text-[12px] text-gray-500">{place.country} {place.state} {place.city} {place.district}</div>
               <h1 className="mt-1 text-[18px] font-bold">{place.name}</h1>
