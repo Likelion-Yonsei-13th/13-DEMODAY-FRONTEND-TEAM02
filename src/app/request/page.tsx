@@ -1,21 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/nav/Navbar";
+import { useCreateRequest, useThemeTags } from "@/lib/api/queries.document";
+import { useSearchPlaces } from "@/lib/api/queries.place";
 
 export default function RequestPage() {
+  const router = useRouter();
+  const createRequest = useCreateRequest();
+  const { data: themeTags } = useThemeTags();
+  const { data: places } = useSearchPlaces({});
+
+  const [selectedPlace, setSelectedPlace] = useState<number | null>(null);
+  const [travelDate, setTravelDate] = useState<string>("");
+  const [numberOfPeople, setNumberOfPeople] = useState<number>(1);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [experience, setExperience] = useState<string>("");
+  const [guidance, setGuidance] = useState(true);
+  const [isPublicProfile, setIsPublicProfile] = useState(true);
+  
   const [startDate, setStartDate] = useState<number | null>(null);
   const [endDate, setEndDate] = useState<number | null>(null);
-  const [guide, setGuide] = useState(false);
   const [detailFocused, setDetailFocused] = useState(false);
 
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-  const travelTags = [
-    "힐링여행","감성사진러","여유로운","빡빡한","액티비티덕후","밤하늘러버",
-    "새로운곳탐험","먹방여행","현지인맛집","카페투어","시장탐방",
-    "도시감성","박물관러버","전통시장탐방","전시회","드라이브여행"
-  ];
+  // 백엔드에서 불러온 태그 목록 사용
 
   /** 날짜 클릭 로직 */
   const handleDateClick = (day: number) => {
@@ -41,12 +50,53 @@ export default function RequestPage() {
   };
 
   /** 태그 선택 */
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(prev => prev.filter(t => t !== tag));
+  const toggleTag = (tagId: number) => {
+    if (selectedTagIds.includes(tagId)) {
+      setSelectedTagIds(prev => prev.filter(id => id !== tagId));
     } else {
-      if (selectedTags.length >= 5) return;
-      setSelectedTags(prev => [...prev, tag]);
+      if (selectedTagIds.length >= 5) return;
+      setSelectedTagIds(prev => [...prev, tagId]);
+    }
+  };
+
+  /** 요청서 제출 */
+  const handleSubmit = async () => {
+    if (!selectedPlace) {
+      alert("여행지를 선택해주세요.");
+      return;
+    }
+    if (!travelDate) {
+      alert("여행 날짜를 선택해주세요.");
+      return;
+    }
+    if (numberOfPeople < 1) {
+      alert("여행 인원을 입력해주세요.");
+      return;
+    }
+    if (!experience.trim()) {
+      alert("제안 세부 요청사항을 입력해주세요.");
+      return;
+    }
+
+    try {
+      await createRequest.mutateAsync({
+        place: selectedPlace,
+        date: travelDate,
+        number_of_people: numberOfPeople,
+        guidance,
+        travel_type_ids: selectedTagIds,
+        experience,
+        is_public_profile: isPublicProfile,
+      });
+      alert("요청서가 성공적으로 제출되었습니다!");
+      router.push("/");
+    } catch (error: any) {
+      console.error("요청서 제출 실패:", error);
+      const errorMsg = 
+        error?.response?.data?.detail || 
+        error?.response?.data?.error || 
+        "요청서 제출에 실패했습니다.";
+      alert(errorMsg);
     }
   };
 
@@ -149,15 +199,29 @@ export default function RequestPage() {
             </div>
           </div>
 
-          {/* REGION */}
-          <p className="text-[14px] font-medium mb-2">지역선택</p>
-          <button className="w-full border border-[#E0A800] text-[#E0A800] rounded-lg py-3 mb-4 font-medium">
-            서울특별시
-          </button>
+      {/* PLACE SELECTION */}
+          <p className="text-[14px] font-medium mb-2">여행지 선택*</p>
+          <select 
+            className="w-full border border-[#E0A800] text-[#E0A800] rounded-lg py-3 mb-4 font-medium bg-white"
+            value={selectedPlace || ""}
+            onChange={(e) => setSelectedPlace(Number(e.target.value))}
+          >
+            <option value="">여행지를 선택해주세요</option>
+            {places?.map((place) => (
+              <option key={place.id} value={place.id}>
+                {place.name} ({place.city})
+              </option>
+            ))}
+          </select>
 
-          {/* DISTRICT */}
-          <p className="text-[14px] font-medium mb-1">지역구*</p>
-          <input className="input-field rounded-lg bg-[#F8F8F8]" placeholder="지역구를 선택해주세요" />
+          {/* DATE */}
+          <p className="text-[14px] font-medium mb-1">여행 날짜*</p>
+          <input 
+            type="date"
+            className="w-full input-field rounded-lg bg-[#F8F8F8]" 
+            value={travelDate}
+            onChange={(e) => setTravelDate(e.target.value)}
+          />
 
         </div>
       </div>
@@ -167,7 +231,14 @@ export default function RequestPage() {
         <p className="text-[14px] font-medium mb-2">여행인원*</p>
 
         <div className="flex items-center gap-3 mb-6">
-          <input className="input-field w-[120px] rounded-lg bg-[#F8F8F8]" placeholder="입력" />
+          <input 
+            type="number"
+            min="1"
+            className="input-field w-[120px] rounded-lg bg-[#F8F8F8]" 
+            placeholder="입력"
+            value={numberOfPeople}
+            onChange={(e) => setNumberOfPeople(Number(e.target.value))}
+          />
           <span className="text-[14px] text-gray-600">명</span>
         </div>
       </div>
@@ -178,29 +249,24 @@ export default function RequestPage() {
         <p className="text-[12px] text-gray-400 mb-3">최대 5개까지 선택 가능</p>
 
         <div className="flex flex-wrap gap-2">
-          {travelTags.map((tag, idx) => {
-            const selected = selectedTags.includes(tag);
+          {themeTags?.map((tag) => {
+            const selected = selectedTagIds.includes(tag.id);
             return (
               <button
-                key={idx}
-                onClick={() => toggleTag(tag)}
+                key={tag.id}
+                onClick={() => toggleTag(tag.id)}
                 className={`
                   px-4 py-1 text-[13px] rounded-full border border-[#FFC600]
                   ${selected ? "bg-[#FFC600] text-white" : "text-[#FFC600] bg-white"}
                 `}
               >
-                #{tag}
+                #{tag.name}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* NAME */}
-      <div className="px-5 mt-8">
-        <p className="text-[14px] font-medium mb-1">제안서 이름*</p>
-        <input className="input-field rounded-lg bg-[#F8F8F8]" placeholder="정보를 입력하세요" />
-      </div>
 
       {/* DETAIL */}
       <div className="px-5 mt-6">
@@ -208,20 +274,12 @@ export default function RequestPage() {
 
         <textarea
           rows={5}
+          value={experience}
+          onChange={(e) => setExperience(e.target.value)}
           onFocus={() => setDetailFocused(true)}
-          onBlur={(e) => !e.target.value && setDetailFocused(false)}
-          className={`
-            input-field rounded-lg text-[14px] leading-[20px]
-            ${detailFocused ? "bg-white text-black" : "bg-[#F0F0F0] text-gray-500"}
-          `}
-          defaultValue={
-            detailFocused
-              ? ""
-              : `ex.알차게 여행하고 싶습니다!
-여기 지역에 놀러갔을 때, 보통 보고 가는
-유명한 곳 + 로컬님이 추천해주시는 독특한 장소들로 구성해주셨으면 좋겠어요. 맛집과
-카페도 여러가지 추천해주시면 좋겠습니다`
-          }
+          onBlur={() => setDetailFocused(false)}
+          className="input-field rounded-lg text-[14px] leading-[20px] bg-white text-black"
+          placeholder="ex. 알차게 여행하고 싶습니다! 여기 지역에 놀러갔을 때, 보통 보고 가는 유명한 곳 + 로컴님이 추천해주시는 독특한 장소들로 구성해주셨으면 좋겠어요. 맛집과 카페도 여러가지 추천해주시면 좋겠습니다."
         />
       </div>
 
@@ -233,8 +291,8 @@ export default function RequestPage() {
           <label className="flex items-center gap-2 text-[14px]">
             <input
               type="radio"
-              checked={!guide}
-              onChange={() => setGuide(false)}
+              checked={!guidance}
+              onChange={() => setGuidance(false)}
               className="accent-[#FFC600]"
             />
             아니오
@@ -243,8 +301,8 @@ export default function RequestPage() {
           <label className="flex items-center gap-2 text-[14px]">
             <input
               type="radio"
-              checked={guide}
-              onChange={() => setGuide(true)}
+              checked={guidance}
+              onChange={() => setGuidance(true)}
               className="accent-[#FFC600]"
             />
             예
@@ -254,7 +312,13 @@ export default function RequestPage() {
 
       {/* CTA BUTTON */}
       <div className="px-5 mt-8 flex justify-center">
-        <button className="btn-yellow">제안서 요청하기</button>
+        <button 
+          onClick={handleSubmit}
+          disabled={createRequest.isPending}
+          className="btn-yellow disabled:opacity-50"
+        >
+          {createRequest.isPending ? "제출 중..." : "제안서 요청하기"}
+        </button>
       </div>
 
       <Navbar />

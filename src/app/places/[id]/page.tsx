@@ -3,8 +3,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import TopHeader from "@/components/TopHeader";
 import Navbar from "@/components/nav/Navbar";
-import { absUrl, usePlaceDetail, useMyWishlists, useAddToWishlist, useCreateWishlist, usePlaceLikeToggle } from "@/lib/api/queries.place";
-import { useState } from "react";
+import { absUrl, usePlaceDetail, useMyWishlists, useAddToWishlist, useCreateWishlist, usePlaceLike, usePlaceUnlike, useLikedPlaces } from "@/lib/api/queries.place";
+import { useState, useEffect } from "react";
 
 export default function PlaceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -13,16 +13,41 @@ export default function PlaceDetailPage() {
   const placeId = Number(id);
   const { data: place } = usePlaceDetail(placeId);
   const { data: lists } = useMyWishlists(true);
+  const { data: likedPlaces } = useLikedPlaces();
   const addToWishlist = useAddToWishlist();
   const createWishlist = useCreateWishlist();
-  const toggleLike = usePlaceLikeToggle();
+  const likeMutation = usePlaceLike();
+  const unlikeMutation = usePlaceUnlike();
+  
   const [mode, setMode] = useState<"pick" | "create">("pick");
   const [newTitle, setNewTitle] = useState("");
+  const [isLiked, setIsLiked] = useState(false);
+  const [localLikesCount, setLocalLikesCount] = useState(0);
+
+  // 좋아요한 장소 목록에서 현재 장소가 있는지 확인
+  useEffect(() => {
+    if (likedPlaces && place) {
+      const liked = likedPlaces.some(p => p.id === placeId);
+      setIsLiked(liked);
+      setLocalLikesCount(place.likes_count);
+    } else if (place) {
+      setLocalLikesCount(place.likes_count);
+    }
+  }, [likedPlaces, place, placeId]);
   
-  const handleLike = async () => {
+  const handleLikeToggle = async () => {
     try {
-      await toggleLike.mutateAsync(placeId);
-      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+      if (isLiked) {
+        // 좋아요 취소
+        const result = await unlikeMutation.mutateAsync(placeId);
+        setIsLiked(false);
+        setLocalLikesCount(result.likes_count);
+      } else {
+        // 좋아요 추가
+        const result = await likeMutation.mutateAsync(placeId);
+        setIsLiked(true);
+        setLocalLikesCount(result.likes_count);
+      }
     } catch (error) {
       console.error("좋아요 실패:", error);
       alert("좋아요 처리에 실패했습니다.");
@@ -43,12 +68,16 @@ export default function PlaceDetailPage() {
               <h1 className="mt-1 text-[18px] font-bold">{place.name}</h1>
               <div className="mt-2 flex items-center gap-3">
                 <button
-                  onClick={handleLike}
-                  disabled={toggleLike.isPending}
-                  className="flex items-center gap-1 rounded-[8px] border border-[#FF3B30] px-3 py-2 text-[13px] font-semibold text-[#FF3B30] hover:bg-[#FFF5F5] transition-colors disabled:opacity-50"
+                  onClick={handleLikeToggle}
+                  disabled={likeMutation.isPending || unlikeMutation.isPending}
+                  className={`flex items-center gap-1 rounded-[8px] border px-3 py-2 text-[13px] font-semibold transition-colors disabled:opacity-50 ${
+                    isLiked 
+                      ? 'border-[#FF3B30] bg-[#FF3B30] text-white hover:bg-[#E6342A]' 
+                      : 'border-[#FF3B30] text-[#FF3B30] hover:bg-[#FFF5F5]'
+                  }`}
                 >
-                  <span>❤️</span>
-                  <span>좋아요 {place.likes_count}</span>
+                  <span>{isLiked ? '❤️' : '♡'}</span>
+                  <span>좋아요 {localLikesCount}</span>
                 </button>
                 <div className="text-[12px] text-gray-500">조회 {place.view_count}</div>
               </div>

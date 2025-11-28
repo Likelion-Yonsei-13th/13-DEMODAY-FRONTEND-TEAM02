@@ -13,6 +13,7 @@ export type TravelPlace = {
   district: string;
   likes_count: number;
   view_count: number;
+  is_liked?: boolean; // 클라이언트에서 관리
 };
 
 export type StoryListItem = {
@@ -54,7 +55,23 @@ export function usePlaceDetail(id?: number) {
 }
 
 // ---- Wishlists ----
-export type Wishlist = { id: number; title: string; description?: string; is_public: boolean; created_at: string };
+export type Wishlist = { 
+  id: number; 
+  title: string; 
+  description?: string; 
+  is_public: boolean; 
+  created_at: string;
+  items?: WishlistItem[];
+};
+
+export type WishlistItem = {
+  id: number;
+  travel_spot: number;
+  trend: number | null;
+  created_at: string;
+  travel_spot_detail?: TravelPlace;
+};
+
 export function useMyWishlists(enabled = true) {
   return useQuery<Wishlist[]>({
     enabled,
@@ -65,14 +82,70 @@ export function useMyWishlists(enabled = true) {
     },
   });
 }
+
+export function useWishlistDetail(id?: number) {
+  return useQuery<Wishlist | undefined>({
+    enabled: !!id,
+    queryKey: ["wishlist", id],
+    queryFn: async () => {
+      if (!id) return undefined;
+      const { data } = await api.get(endpoints.wishlist.detail(id));
+      return data;
+    },
+  });
+}
+
+export function useWishlistItems(wishlistId?: number) {
+  return useQuery<WishlistItem[]>({
+    enabled: !!wishlistId,
+    queryKey: ["wishlist", wishlistId, "items"],
+    queryFn: async () => {
+      if (!wishlistId) return [];
+      const { data } = await api.get(endpoints.wishlist.items(wishlistId));
+      return data?.results ?? data;
+    },
+  });
+}
+
 export function useCreateWishlist() {
+  const qc = useQueryClient();
   return useMutation<{ id: number }, any, { title: string; description?: string }>({
     mutationFn: async (body) => {
       const { data } = await api.post("/place/wishlists/", body);
       return data;
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+    },
   });
 }
+
+export function useDeleteWishlist() {
+  const qc = useQueryClient();
+  return useMutation<void, any, number>({
+    mutationFn: async (id) => {
+      await api.delete(endpoints.wishlist.detail(id));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+    },
+  });
+}
+
+export function useUpdateWishlist() {
+  const qc = useQueryClient();
+  return useMutation<Wishlist, any, { id: number; title?: string; description?: string; is_public?: boolean }>({
+    mutationFn: async ({ id, ...body }) => {
+      const { data } = await api.patch(endpoints.wishlist.detail(id), body);
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wishlist", data.id] });
+    },
+  });
+}
+
 export function useAddToWishlist() {
   const qc = useQueryClient();
   return useMutation<any, any, { wishlistId: number; placeId: number }>({
@@ -83,18 +156,63 @@ export function useAddToWishlist() {
       const { data } = await api.post(`/place/wishlists/${wishlistId}/items/`, payload);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wishlist", variables.wishlistId] });
+      qc.invalidateQueries({ queryKey: ["wishlist", variables.wishlistId, "items"] });
+    },
+  });
+}
+
+export function useRemoveFromWishlist() {
+  const qc = useQueryClient();
+  return useMutation<void, any, { itemId: number; wishlistId: number }>({
+    mutationFn: async ({ itemId }) => {
+      await api.delete(endpoints.wishlist.itemDetail(itemId));
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+      qc.invalidateQueries({ queryKey: ["wishlist", variables.wishlistId] });
+      qc.invalidateQueries({ queryKey: ["wishlist", variables.wishlistId, "items"] });
     },
   });
 }
 
 // ---- Place Like Toggle ----
-export function usePlaceLikeToggle() {
+export function useLikedPlaces() {
+  return useQuery<TravelPlace[]>({
+    queryKey: ["liked-places"],
+    queryFn: async () => {
+      const { data } = await api.get(endpoints.place.likes);
+      return data?.results ?? data;
+    },
+  });
+}
+
+export function usePlaceLike() {
+  const qc = useQueryClient();
   return useMutation<{ liked: boolean; likes_count: number }, any, number>({
     mutationFn: async (placeId) => {
       const { data } = await api.post(endpoints.place.like(placeId));
       return data;
+    },
+    onSuccess: (data, placeId) => {
+      qc.invalidateQueries({ queryKey: ["place", placeId] });
+      qc.invalidateQueries({ queryKey: ["liked-places"] });
+    },
+  });
+}
+
+export function usePlaceUnlike() {
+  const qc = useQueryClient();
+  return useMutation<{ liked: boolean; likes_count: number }, any, number>({
+    mutationFn: async (placeId) => {
+      const { data } = await api.delete(endpoints.place.like(placeId));
+      return data;
+    },
+    onSuccess: (data, placeId) => {
+      qc.invalidateQueries({ queryKey: ["place", placeId] });
+      qc.invalidateQueries({ queryKey: ["liked-places"] });
     },
   });
 }

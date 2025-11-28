@@ -4,16 +4,41 @@ import { useState } from "react";
 import Image from "next/image";
 import Navbar from "@/components/nav/Navbar";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useWishlistDetail, useWishlistItems, useDeleteWishlist, absUrl } from "@/lib/api/queries.place";
 
 export default function WishDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const wishlistId = Number(params.id);
+  
   const [openSheet, setOpenSheet] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
 
-  const items = Array(12).fill(0).map((_, i) => ({
-    id: i,
-    title: "서울 여행 TOP5",
-    img: "/hot.png",
-  }));
+  const { data: wishlist, isLoading: wishlistLoading } = useWishlistDetail(wishlistId);
+  const { data: items, isLoading: itemsLoading } = useWishlistItems(wishlistId);
+  const deleteWishlist = useDeleteWishlist();
+
+  const handleDelete = async () => {
+    await deleteWishlist.mutateAsync(wishlistId);
+    router.push("/wish");
+  };
+
+  if (wishlistLoading || itemsLoading) {
+    return (
+      <main className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <p>로딩 중...</p>
+      </main>
+    );
+  }
+
+  if (!wishlist) {
+    return (
+      <main className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <p>위시리스트를 찾을 수 없습니다.</p>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-[#F5F5F5] pb-[80px]">
@@ -24,8 +49,8 @@ export default function WishDetailPage() {
             <span className="text-[20px]">←</span>
           </Link>
           <div>
-            <p className="text-[18px] font-bold">가을 여행 리스트</p>
-            <p className="text-[12px] text-gray-500">12개의 항목</p>
+            <p className="text-[18px] font-bold">{wishlist.title}</p>
+            <p className="text-[12px] text-gray-500">{items?.length || 0}개의 항목</p>
           </div>
         </div>
 
@@ -47,19 +72,31 @@ export default function WishDetailPage() {
 
       {/* ---------- 리스트 Grid ---------- */}
       <section className="grid grid-cols-3 gap-3 px-5">
-        {items.map((item) => (
-          <div key={item.id} className="relative aspect-square overflow-hidden rounded-[6px] bg-gray-200">
-            <Image src={item.img} alt={item.title} fill className="object-cover" />
+        {items && items.length > 0 ? (
+          items.map((item) => {
+            const place = item.travel_spot_detail;
+            const imgSrc = place?.photo ? absUrl(place.photo) : "/hot.png";
+            const placeName = place?.name || "여행지";
+            
+            return (
+              <Link 
+                key={item.id} 
+                href={`/places/${item.travel_spot}`}
+                className="relative aspect-square overflow-hidden rounded-[6px] bg-gray-200"
+              >
+                <Image src={imgSrc} alt={placeName} fill className="object-cover" />
 
-            <span className="absolute left-1.5 top-1.5 bg-[#F9D040] px-2 py-[2px] rounded-[4px] text-[10px] font-bold text-gray-900">
-              NEW
-            </span>
-
-            <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
-              <p className="truncate text-[10px] text-white">{item.title}</p>
-            </div>
+                <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1.5 py-1">
+                  <p className="truncate text-[10px] text-white">{placeName}</p>
+                </div>
+              </Link>
+            );
+          })
+        ) : (
+          <div className="col-span-3 text-center py-20 text-gray-500">
+            <p>아직 추가된 여행지가 없습니다.</p>
           </div>
-        ))}
+        )}
       </section>
 
       <Navbar />
@@ -157,10 +194,7 @@ export default function WishDetailPage() {
               </button>
 
               <button
-                onClick={() => {
-                  alert("삭제 완료");
-                  setOpenDeleteModal(false);
-                }}
+                onClick={handleDelete}
                 className="w-[48%] rounded-md py-2 text-[14px] text-[red]"
               >
                 삭제
