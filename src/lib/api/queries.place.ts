@@ -60,23 +60,43 @@ export function useMyWishlists(enabled = true) {
     enabled,
     queryKey: ["wishlists", "mine"],
     queryFn: async () => {
-      const { data } = await api.get(endpoints.place.wishlist.list);
+      const { data } = await api.get("/place/wishlists/");
       return data?.results ?? data;
     },
   });
 }
 export function useCreateWishlist() {
-  return useMutation<{ id: number }, any, { title: string; description?: string }>(async (body) => {
-    const { data } = await api.post(endpoints.place.wishlist.list, body);
-    return data;
+  return useMutation<{ id: number }, any, { title: string; description?: string }>({
+    mutationFn: async (body) => {
+      const { data } = await api.post("/place/wishlists/", body);
+      return data;
+    },
   });
 }
 export function useAddToWishlist() {
   const qc = useQueryClient();
-  return useMutation<any, any, { wishlistId: number; placeId: number }>(async ({ wishlistId, placeId }) => {
-    const { data } = await api.post(endpoints.place.wishlist.items(wishlistId), { travel_spot: placeId });
-    return data;
-  }, { onSuccess: () => { qc.invalidateQueries({ queryKey: ["wishlists", "mine"] }); } });
+  return useMutation<any, any, { wishlistId: number; placeId: number }>({
+    mutationFn: async ({ wishlistId, placeId }) => {
+      console.log("[useAddToWishlist] wishlistId:", wishlistId, "placeId:", placeId);
+      const payload = { travel_spot: placeId };
+      console.log("[useAddToWishlist] payload:", payload);
+      const { data } = await api.post(`/place/wishlists/${wishlistId}/items/`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["wishlists", "mine"] });
+    },
+  });
+}
+
+// ---- Place Like Toggle ----
+export function usePlaceLikeToggle() {
+  return useMutation<{ liked: boolean; likes_count: number }, any, number>({
+    mutationFn: async (placeId) => {
+      const { data } = await api.post(endpoints.place.like(placeId));
+      return data;
+    },
+  });
 }
 
 // ---- Place search (SearchFilter uses query param 'search') ----

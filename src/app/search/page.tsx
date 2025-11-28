@@ -143,7 +143,7 @@ export default function SearchPage() {
 
 function PlaceCard({ place }: { place: TravelPlace }) {
   return (
-    <article className="w-[260px] flex-none overflow-hidden rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+    <Link href={`/places/${place.id}`} className="w-[260px] flex-none overflow-hidden rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:opacity-80 transition-opacity">
       <div className="relative h-[150px] w-full overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={absUrl(place.photo)} alt={place.name} className="h-full w-full object-cover" />
@@ -154,7 +154,7 @@ function PlaceCard({ place }: { place: TravelPlace }) {
           {place.name}
         </p>
       </div>
-    </article>
+    </Link>
   );
 }
 

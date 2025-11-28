@@ -1,20 +1,33 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import TopHeader from "@/components/TopHeader";
 import Navbar from "@/components/nav/Navbar";
-import { absUrl, usePlaceDetail, useMyWishlists, useAddToWishlist, useCreateWishlist } from "@/lib/api/queries.place";
+import { absUrl, usePlaceDetail, useMyWishlists, useAddToWishlist, useCreateWishlist, usePlaceLikeToggle } from "@/lib/api/queries.place";
 import { useState } from "react";
 
 export default function PlaceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const placeId = Number(id);
   const { data: place } = usePlaceDetail(placeId);
   const { data: lists } = useMyWishlists(true);
   const addToWishlist = useAddToWishlist();
   const createWishlist = useCreateWishlist();
+  const toggleLike = usePlaceLikeToggle();
   const [mode, setMode] = useState<"pick" | "create">("pick");
   const [newTitle, setNewTitle] = useState("");
+  
+  const handleLike = async () => {
+    try {
+      await toggleLike.mutateAsync(placeId);
+      queryClient.invalidateQueries({ queryKey: ["place", placeId] });
+    } catch (error) {
+      console.error("좋아요 실패:", error);
+      alert("좋아요 처리에 실패했습니다.");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#F4F4F4] pb-[calc(80px+env(safe-area-inset-bottom))]">
@@ -28,7 +41,17 @@ export default function PlaceDetailPage() {
             <div className="mt-3">
               <div className="text-[12px] text-gray-500">{place.country} {place.state} {place.city} {place.district}</div>
               <h1 className="mt-1 text-[18px] font-bold">{place.name}</h1>
-              <div className="mt-1 text-[12px] text-gray-500">좋아요 {place.likes_count} · 조회 {place.view_count}</div>
+              <div className="mt-2 flex items-center gap-3">
+                <button
+                  onClick={handleLike}
+                  disabled={toggleLike.isPending}
+                  className="flex items-center gap-1 rounded-[8px] border border-[#FF3B30] px-3 py-2 text-[13px] font-semibold text-[#FF3B30] hover:bg-[#FFF5F5] transition-colors disabled:opacity-50"
+                >
+                  <span>❤️</span>
+                  <span>좋아요 {place.likes_count}</span>
+                </button>
+                <div className="text-[12px] text-gray-500">조회 {place.view_count}</div>
+              </div>
             </div>
 
             <div className="mt-5 rounded border p-3">
@@ -48,7 +71,15 @@ export default function PlaceDetailPage() {
                       await addToWishlist.mutateAsync({ wishlistId: wid, placeId });
                       alert("추가되었습니다.");
                     } catch (e: any) {
-                      alert(e?.response?.data?.detail || "추가 실패");
+                      console.error("위시리스트 추가 실패:", e);
+                      console.error("에러 상세:", e?.response?.data);
+                      const errorMsg = 
+                        e?.response?.data?.non_field_errors?.[0] || 
+                        e?.response?.data?.travel_spot?.[0] || 
+                        e?.response?.data?.detail || 
+                        e?.response?.data?.error || 
+                        "추가 실패";
+                      alert(errorMsg);
                     }
                   }}>추가</button>
                   <button className="rounded border px-3 py-2 text-[13px]" onClick={() => setMode("create")}>새 폴더</button>
@@ -60,12 +91,20 @@ export default function PlaceDetailPage() {
                     if (!newTitle.trim()) return alert("폴더 이름을 입력하세요");
                     try {
                       const res = await createWishlist.mutateAsync({ title: newTitle });
+                      // 위시리스트 목록 새로고침
+                      await queryClient.invalidateQueries({ queryKey: ["wishlists", "mine"] });
                       await addToWishlist.mutateAsync({ wishlistId: res.id, placeId });
                       alert("생성 및 추가 완료");
                       setMode("pick");
                       setNewTitle("");
                     } catch (e: any) {
-                      alert(e?.response?.data?.detail || "생성 실패");
+                      console.error("위시리스트 생성 실패:", e);
+                      const errorMsg = 
+                        e?.response?.data?.non_field_errors?.[0] || 
+                        e?.response?.data?.detail || 
+                        e?.response?.data?.error || 
+                        "생성 실패";
+                      alert(errorMsg);
                     }
                   }}>생성+추가</button>
                   <button className="rounded border px-3 py-2 text-[13px]" onClick={() => setMode("pick")}>취소</button>
