@@ -1,21 +1,32 @@
 // src/app/profile/ProfileTraveler.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useGetUserProfile } from "@/lib/api/mutations";
 import { useQuery } from "@tanstack/react-query";
+import { useRoots } from "@/lib/api/queries.document";
 import api from "@/lib/api/axios-instance";
 import { endpoints } from "@/lib/api/endpoints";
+import RatingModal from "@/components/RatingModal";
 
 export default function ProfileTraveler() {
   const router = useRouter();
   const { data: profile, isLoading, error } = useGetUserProfile();
   const [userId, setUserId] = useState<string | null>(null);
+  const [purchasedRootIds, setPurchasedRootIds] = useState<number[]>([]);
+  const [selectedRootForRating, setSelectedRootForRating] = useState<any | null>(null);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const { data: allRoots } = useRoots();
   
   useEffect(() => {
-    setUserId(localStorage.getItem("user_id"));
+    const id = localStorage.getItem("user_id");
+    setUserId(id);
+    
+    // 구매된 제안서 ID 가져오기
+    const purchased = JSON.parse(localStorage.getItem("purchased_roots") || "[]");
+    setPurchasedRootIds(purchased);
   }, []);
   
   // 내 스토리 목록 조회
@@ -29,6 +40,12 @@ export default function ProfileTraveler() {
     retry: false,
   });
 
+  // 구매된 제안서 필터링
+  const purchasedProposals = useMemo(() => {
+    if (!allRoots || purchasedRootIds.length === 0) return [];
+    return allRoots.filter((root: any) => purchasedRootIds.includes(root.id));
+  }, [allRoots, purchasedRootIds]);
+  
   // 내 스토리만 필터링
   const stories = React.useMemo(() => {
     if (!allStoriesData || !userId) return [];
@@ -176,85 +193,98 @@ export default function ProfileTraveler() {
       </section>
 
       {/* ===== 구매한 제안서 ===== */}
-      <section className="px-5 pt-10">
+      <section className="px-5 pt-10 pb-20">
         <div className="mb-3 flex items-baseline gap-2">
-          <h2 className="text-[18px] font-bold text-[#111]">구매한 제안서</h2>
-          <span className="text-[13px] font-semibold text-[#FFC727]">9개</span>
+          <h2 className="text-[18px] font-bold text-[#111]">\uad6c매한 제안서</h2>
+          <span className="text-[13px] font-semibold text-[#FFC727]">{purchasedProposals.length}개</span>
         </div>
 
-        {/* 첫 번째 카드 + 평점 박스 */}
-        <div className="border-b border-[#E5E5E5] pb-6 pt-5">
-          {/* 제안서 기본 정보 */}
-          <div className="flex items-center gap-3">
-            <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5]" />
-            <div className="flex-1">
-              <p className="text-[11px] text-[#888]">종로구 한국체험</p>
-              <p className="mt-[2px] text-[14px] font-semibold text-[#111]">
-                종로구 A to Z 체험!
-              </p>
-              <p className="mt-[2px] text-[12px] text-[#666]">
-                로컬이 적는 제안서 한줄 정리입니다
-              </p>
-              <p className="mt-[4px] text-[11px] text-[#999]">
-                로컬이름(닉네임)
-              </p>
-            </div>
+        {/* 구매한 제안서 목록 */}
+        {purchasedProposals.length === 0 ? (
+          <div className="py-10 text-center text-[14px] text-[#999]">
+            구매한 제안서가 없습니다
           </div>
+        ) : (
+          purchasedProposals.map((root: any, idx: number) => (
+            <div
+              key={root.id}
+              className={`${idx > 0 ? "pt-6" : "pt-5"} pb-6 ${idx < purchasedProposals.length - 1 ? "border-b" : ""} border-[#E5E5E5]`}
+            >
+              {/* 제안서 기본 정보 */}
+              <div className="flex items-center gap-3">
+                <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5] flex items-center justify-center text-[18px] font-bold text-white">
+                  {root.founder?.display_name?.charAt(0)?.toUpperCase() || '✢'}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[11px] text-[#888]">
+                    {typeof root.place === 'object'
+                      ? root.place?.name || root.place?.city || '여행지'
+                      : '여행지'}
+                  </p>
+                  <p className="mt-[2px] text-[14px] font-semibold text-[#111]">
+                    {root.title || '제목 없음'}
+                  </p>
+                  <p className="mt-[2px] text-[12px] text-[#666]">
+                    {root.founder?.display_name || '로컬'}
+                  </p>
+                </div>
+              </div>
 
-          {/* 평점 남기기 박스 (디자인 박스) */}
-          <div className="mt-5 rounded-[10px] border border-[#FFCC47] bg-white px-6 py-4">
-            <p className="mb-3 text-center text-[16px] font-bold text-[#333]">
-              평점을 남겨주세요
-            </p>
-
-            {/* 별점 (샘플) */}
-            <div className="flex justify-center gap-3 text-[20px]">
-              <span className="text-[#FFC727]">★</span>
-              <span className="text-[#FFC727]">★</span>
-              <span className="text-[#CCCCCC]">★</span>
-              <span className="text-[#CCCCCC]">★</span>
-              <span className="text-[#CCCCCC]">★</span>
-            </div>
-
-            <div className="mt-3 flex justify-center">
-              <button className="h-8 min-w-[60px] rounded-full border border-[#FFCC47] bg-white px-4 text-[14px] font-medium text-[#FFCC47]">
-                완료
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 나머지 구매 제안서 샘플 2개 */}
-        {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="border-b border-[#E5E5E5] pb-6 pt-6 last:border-b-0"
-          >
-            <div className="flex items-center gap-3">
-              <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5]" />
-              <div className="flex-1">
-                <p className="text-[11px] text-[#888]">종로구 한국체험</p>
-                <p className="mt-[2px] text-[14px] font-semibold text-[#111]">
-                  종로구 A to Z 체험!
+              {/* 평점 남기기 박스 */}
+              <div className="mt-5 rounded-[10px] border border-[#FFCC47] bg-white px-6 py-4">
+                <p className="mb-3 text-center text-[16px] font-bold text-[#333]">
+                  평점을 남겨주세요
                 </p>
-                <p className="mt-[2px] text-[12px] text-[#666]">
-                  로컬이 적는 제안서 한줄 정리입니다
-                </p>
-                <p className="mt-[4px] text-[11px] text-[#999]">
-                  로컬이름(닉네임)
-                </p>
+
+                {/* 별점 선택 */}
+                <div className="flex justify-center gap-3 text-[28px]">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <span key={star} className="text-[#CCCCCC] cursor-pointer hover:text-[#FFC727]">
+                      ★
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-3 flex justify-center">
+                  <button
+                    onClick={() => {
+                      setSelectedRootForRating(root);
+                      setIsRatingModalOpen(true);
+                    }}
+                    className="h-8 min-w-[60px] rounded-full border border-[#FFCC47] bg-white px-4 text-[14px] font-medium text-[#FFCC47] hover:bg-[#FFFAF0]"
+                  >
+                    완료
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
 
-        {/* 전체보기 버튼 */}
-        <div className="mt-6 mb-4">
-          <button className="h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white">
-            전체보기
-          </button>
-        </div>
+        {/* 모든 로컬 제안서 보기 버튼 */}
+        {purchasedProposals.length > 0 && (
+          <div className="mt-6 mb-4">
+            <button
+              onClick={() => router.push('/local-proposals')}
+              className="h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
+            >
+              모든 로컬 제안서 보기
+            </button>
+          </div>
+        )}
       </section>
+      
+      {/* 평점 모달 */}
+      <RatingModal
+        isOpen={isRatingModalOpen}
+        onClose={() => setIsRatingModalOpen(false)}
+        onConfirm={async () => {
+          // 평점 저장 로직
+          return Promise.resolve();
+        }}
+        rootId={selectedRootForRating?.id || 0}
+        rootTitle={selectedRootForRating?.title}
+      />
     </div>
   );
 }
