@@ -225,6 +225,41 @@ export function useGetMyStories() {
   });
 }
 
+// 이미지 업로드
+type ImageUploadResponse = {
+  url: string;
+  filename: string;
+};
+
+export function useUploadImage() {
+  return useMutation<ImageUploadResponse, Error, File>({
+    mutationFn: async (file) => {
+      console.log("[useUploadImage] 업로드 시작:", file.name, file.type, file.size);
+      
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      console.log("[useUploadImage] FormData 생성 완료");
+      console.log("[useUploadImage] 엔드포인트:", endpoints.story.uploadImage);
+      
+      try {
+        // Content-Type을 명시하지 않으면 axios가 자동으로 multipart/form-data로 설정함
+        const { data } = await api.post(endpoints.story.uploadImage, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        console.log("[useUploadImage] 응답 받음:", data);
+        return data;
+      } catch (error: any) {
+        console.error("[useUploadImage] 업로드 실패:", error);
+        console.error("[useUploadImage] 에러 상세:", error.response?.data);
+        throw error;
+      }
+    },
+  });
+}
+
 // 스토리 생성
 export function useCreateStory() {
   return useMutation<StoryData, Error, StoryCreateData>({

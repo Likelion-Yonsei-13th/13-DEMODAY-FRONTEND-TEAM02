@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useCreateStory } from "@/lib/api/mutations";
+import { useCreateStory, useUploadImage } from "@/lib/api/mutations";
 
 export default function CreateStoryPage() {
   const router = useRouter();
   const createStory = useCreateStory();
+  const uploadImage = useUploadImage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -19,6 +21,43 @@ export default function CreateStoryPage() {
     is_public: true,
   });
 
+  const [previewImage, setPreviewImage] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert("지원하지 않는 파일 형식입니다. (JPG, PNG, GIF, WEBP만 가능)");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("파일 크기는 10MB 이하여야 합니다.");
+      return;
+    }
+
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewImage(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setPreviewImage("");
+    setFormData({ ...formData, photo_url: "" });
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -28,18 +67,40 @@ export default function CreateStoryPage() {
     }
 
     try {
-      const result = await createStory.mutateAsync(formData);
-      console.log("스토리 생성 결과:", result);
+      // 선택된 파일이 있으면 먼저 업로드해서 URL을 받음
+      let photoUrl = formData.photo_url;
+      if (selectedFile) {
+        console.log("[업로드] 파일 업로드 시작:", selectedFile.name);
+        try {
+          const upload = await uploadImage.mutateAsync(selectedFile);
+          if (!upload || !upload.url) {
+            throw new Error("업로드 응답에 URL이 없습니다.");
+          }
+          photoUrl = upload.url;
+          console.log("[업로드] 받은 URL:", photoUrl);
+        } catch (uploadError: any) {
+          console.error("[업로드 실패]", uploadError);
+          alert("이미지 업로드에 실패했습니다: " + (uploadError.response?.data?.error || uploadError.message));
+          return; // 업로드 실패 시 스토리 생성을 중단
+        }
+      }
+
+      const storyData = {
+        ...formData,
+        photo_url: photoUrl,
+      };
+      console.log("[스토리 생성] 전송 데이터:", storyData);
+      const result = await createStory.mutateAsync(storyData);
+      console.log("[스토리 생성] 응답:", result);
       alert("스토리가 작성되었습니다.");
-      // 페이지 이동 전 약간 대기
       setTimeout(() => {
         router.push("/profile");
-        window.location.reload(); // 강제 새로고침
+        window.location.reload();
       }, 500);
     } catch (error: any) {
       console.error("스토리 작성 실패:", error);
       console.error("에러 상세:", error.response?.data);
-      alert(error.response?.data?.detail || "스토리 작성에 실패했습니다.");
+      alert(error.response?.data?.error || error.response?.data?.detail || "스토리 작성에 실패했습니다.");
     }
   };
 
@@ -56,10 +117,10 @@ export default function CreateStoryPage() {
         <h1 className="text-[16px] font-semibold text-[#111]">여행 이야기 작성</h1>
         <button
           onClick={handleSubmit}
-          disabled={createStory.isPending}
+          disabled={createStory.isPending || uploadImage.isPending}
           className="text-[14px] font-semibold text-[#FFC727] disabled:opacity-50"
         >
-          {createStory.isPending ? "작성 중..." : "완료"}
+          {uploadImage.isPending ? "업로드 중..." : createStory.isPending ? "작성 중..." : "완료"}
         </button>
       </header>
 
@@ -158,20 +219,55 @@ export default function CreateStoryPage() {
           />
         </div>
 
-        {/* 사진 URL */}
+        {/* 사진 업로드 */}
         <div className="mb-6">
           <label className="mb-2 block text-[14px] font-semibold text-[#111]">
-            사진 URL
+            사진
           </label>
-          <input
-            type="text"
-            value={formData.photo_url}
-            onChange={(e) =>
-              setFormData({ ...formData, photo_url: e.target.value })
-            }
-            placeholder="사진 URL을 입력하세요"
-            className="w-full rounded-[8px] border border-[#E5E5E5] px-4 py-3 text-[14px] text-[#111] placeholder:text-[#999] focus:border-[#FFC727] focus:outline-none"
-          />
+
+          {!previewImage && (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full rounded-[8px] border-2 border-dashed border-[#E5E5E5] px-4 py-8 text-center text-[14px] text-[#999] hover:border-[#FFC727] hover:text-[#FFC727] transition-colors"
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span>사진을 선택하세요</span>
+                  <span className="text-[12px] text-[#999]">JPG, PNG, GIF, WEBP (10MB 이하)</span>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {previewImage && (
+            <div className="relative">
+              <img
+                src={previewImage}
+                alt="미리보기"
+                className="w-full h-[200px] object-cover rounded-[8px]"
+              />
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-2 right-2 bg-[#FF3B30] text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-[#E5342E] transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 공개 여부 */}

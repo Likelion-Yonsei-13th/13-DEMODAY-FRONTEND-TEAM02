@@ -137,6 +137,10 @@ export default function ProfileTraveler() {
                         src={story.photo_url} 
                         alt={story.title}
                         className="h-full w-full object-cover"
+                        onError={(e) => {
+                          console.error(`[이미지 로드 실패] URL:`, story.photo_url);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     </div>
                   )}

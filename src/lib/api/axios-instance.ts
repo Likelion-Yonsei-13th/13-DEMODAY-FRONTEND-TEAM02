@@ -2,10 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000",
-  timeout: 10000,
-  headers: { 
-    "Content-Type": "application/json",
-  },
+  timeout: 30000, // 30초로 증가 (이미지 업로드용)
   withCredentials: true, // 쿠키 기반 인증 활성화 (HttpOnly 쿠키 사용)
 });
 
@@ -19,6 +16,12 @@ api.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
+    
+    // Content-Type이 명시적으로 설정되지 않았으면 application/json 사용
+    if (!config.headers['Content-Type']) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+    
     console.log("[API Request] URL:", config.url);
     console.log("[API Request] Headers:", config.headers);
     return config;

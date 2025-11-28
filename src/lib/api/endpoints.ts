@@ -67,6 +67,7 @@ export const endpoints = {
     like: (id: number) => `/story/stories/${id}/like/`,
     comments: (storyId: number) => `/story/stories/${storyId}/comments/`,
     commentDelete: (id: number) => `/story/comments/${id}/`,
+    uploadImage: "/story/upload-image/",
   },
   
   // 채팅
