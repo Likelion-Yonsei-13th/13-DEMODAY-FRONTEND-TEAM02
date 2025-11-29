@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/nav/Navbar";
 import { useCreateRequest, useThemeTags, useRootDetail } from "@/lib/api/queries.document";
 import { useSearchPlaces } from "@/lib/api/queries.place";
 
-export default function RequestPage() {
+function RequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rootId = searchParams.get("rootId");
   const createRequest = useCreateRequest();
   const { data: themeTags } = useThemeTags();
-  const { data: rootDetail } = useRootDetail(rootId ? parseInt(rootId) : null);
+  const { data: rootDetail } = useRootDetail(rootId ? parseInt(rootId) : undefined);
 
   // 날짜 관련
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -548,5 +548,13 @@ export default function RequestPage() {
 
       <Navbar />
     </div>
+  );
+}
+
+export default function RequestPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">로딩 중...</div>}>
+      <RequestContent />
+    </Suspense>
   );
 }

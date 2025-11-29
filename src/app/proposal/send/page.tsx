@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Navbar from "@/components/nav/Navbar";
@@ -16,14 +16,14 @@ type ScheduleItem = {
   description: string;
 };
 
-export default function ProposalSendPage() {
+function ProposalSendContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestId = searchParams.get("requestId");
   const createRoot = useCreateRoot();
   const uploadImage = useUploadRootImage();
   const { data: themeTags } = useThemeTags();
-  const { data: requestDetail } = useRequestDetail(requestId ? parseInt(requestId) : null);
+  const { data: requestDetail } = useRequestDetail(requestId ? parseInt(requestId) : undefined);
 
   // 제목
   const [title, setTitle] = useState<string>("");
@@ -878,5 +878,13 @@ export default function ProposalSendPage() {
 
       <Navbar />
     </div>
+  );
+}
+
+export default function ProposalSendPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">로딩 중...</div>}>
+      <ProposalSendContent />
+    </Suspense>
   );
 }
