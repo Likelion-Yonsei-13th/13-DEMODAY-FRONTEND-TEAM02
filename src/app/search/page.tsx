@@ -348,8 +348,8 @@ function LocalProposalSection({ region }: { region: { country?: string; state?: 
   const sectionTitle = isUserRole ? "로컬's 제안서" : "여행자's 제안서";
   const moreButtonText = isUserRole ? "모든 로컬 제안서 더보기" : "모든 여행자 제안서 더보기";
 
-  // 최대 4개 표시
-  const displayCards = proposalList.slice(0, 4);
+  // 최대 3개 표시
+  const displayCards = proposalList.slice(0, 3);
 
   return (
     <section className="bg-[#F4F4F4] pt-4">
@@ -362,7 +362,7 @@ function LocalProposalSection({ region }: { region: { country?: string; state?: 
               if (isUserRole) {
                 router.push("/local-proposals");
               } else {
-                router.push("/proposal");
+                router.push("/proposal?tab=recent");
               }
             }}
             className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
@@ -422,12 +422,13 @@ function LocalProposalSection({ region }: { region: { country?: string; state?: 
                 return (
                   <Link
                     key={request.id}
-                    href={`/proposal/${request.id}`}
+                    href={`/request/${request.id}`}
                     className="w-[260px] flex-none overflow-hidden rounded-[10px] bg-white shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-md transition-shadow"
                   >
-                    <div className="h-[200px] w-full overflow-hidden">
-                      <div className="h-full w-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-gray-500 text-[12px]">이미지 없음</span>
+                    <div className="h-[200px] w-full overflow-hidden bg-gradient-to-br from-yellow-100 to-orange-100 flex items-center justify-center">
+                      <div className="text-center">
+                        <p className="text-[24px] mb-1">📍</p>
+                        <p className="text-gray-500 text-[12px] font-medium">{request.place?.name || "여행지"}</p>
                       </div>
                     </div>
 
@@ -440,13 +441,13 @@ function LocalProposalSection({ region }: { region: { country?: string; state?: 
                           className="h-[32px] w-[32px] rounded-full object-cover border border-gray-200"
                         />
                       ) : (
-                        <div className="h-[32px] w-[32px] rounded-full bg-gray-300 flex items-center justify-center text-white text-xs font-bold">
+                        <div className="h-[32px] w-[32px] rounded-full bg-yellow-300 flex items-center justify-center text-white text-xs font-bold">
                           {(request.user?.display_name || "여")[0]}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <p className="text-[11px] text-gray-500 truncate">{request.user?.display_name || "여행자"}</p>
-                        <p className="text-[13px] font-semibold text-gray-900 truncate">{request.place?.name || request.title || "요청서"}</p>
+                        <p className="text-[13px] font-semibold text-gray-900 truncate">{request.title || request.place?.name || "요청서"}</p>
                       </div>
                     </div>
                   </Link>

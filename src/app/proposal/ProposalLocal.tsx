@@ -158,53 +158,74 @@ export default function ProposalLocal() {
           ) : !allRequests || allRequests.length === 0 ? (
             <div className="text-center py-10 text-gray-500">요청서가 없습니다.</div>
           ) : (
-            allRequests.map((request) => (
-              <article
-                key={request.id}
-                className="border-b border-[#EDEDED] py-4 last:border-none"
-              >
-                <div className="flex items-start justify-between">
-                  {/* LEFT */}
-                  <div>
-                    <p className="text-[14px] font-semibold text-[#111]">
-                      {request.title || `여행지: ${request.place?.name || request.place?.city || request.place?.id}`}
-                    </p>
-                    <p className="mt-[2px] text-[12px] text-[#555]">
-                      {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
-                    </p>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {request.travel_type.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag.id}
-                          className="text-[11px] text-[#999] whitespace-nowrap"
-                        >
-                          #{tag.name}
-                        </span>
-                      ))}
+            <>
+              {/* 최대 3개 항목 표시 */}
+              {allRequests.slice(0, 3).map((request) => (
+                <article
+                  key={request.id}
+                  className="border-b border-[#EDEDED] py-4 last:border-none cursor-pointer hover:bg-[#F9F9F9]"
+                >
+                  <Link href={`/request/${request.id}`} className="block">
+                    {/* 여행자 프로필 */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-[40px] w-[40px] rounded-full bg-[#E5E5E5] flex items-center justify-center text-[18px] font-bold text-white">
+                        {request.user?.display_name?.charAt(0) || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-[#111]">
+                          {request.user?.display_name || '여행자'}
+                        </p>
+                        <p className="text-[11px] text-[#999]">
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                    {request.experience && (
-                      <p className="mt-2 text-[12px] text-[#666] line-clamp-2">
-                        {request.experience}
+                    
+                    {/* 요청서 정보 */}
+                    <div>
+                      <p className="text-[14px] font-semibold text-[#111] line-clamp-2">
+                        {request.title || `여행지: ${request.place?.name || request.place?.city || request.place?.id}`}
                       </p>
-                    )}
-                  </div>
+                      <p className="mt-[2px] text-[12px] text-[#555]">
+                        {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {request.travel_type.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="text-[11px] text-[#999] whitespace-nowrap"
+                          >
+                            #{tag.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Link>
 
                   {/* 제안서 보내기 버튼 */}
+                  <div className="mt-3 flex gap-2">
+                    <Link
+                      href={`/proposal/send?requestId=${request.id}`}
+                      className="flex-1 text-center rounded-lg border-2 border-[#FFC727] bg-white py-2 text-[13px] font-semibold text-[#FFC727] hover:bg-[#FFFAF0]"
+                    >
+                      제안서 보내기
+                    </Link>
+                  </div>
+                </article>
+              ))}
+              
+              {/* 모든 요청서 더보기 */}
+              {allRequests.length > 3 && (
+                <div className="text-center mt-4 pb-4">
                   <Link
-                    href={`/proposal/send?requestId=${request.id}`}
-                    className="flex flex-col items-center text-[11px] text-[#FFC727] font-semibold"
+                    href="/request?tab=all"
+                    className="text-[13px] font-semibold text-[#FFC727] hover:underline"
                   >
-                    <Image
-                      src="/send-yellow.svg"
-                      alt="제안"
-                      width={22}
-                      height={22}
-                    />
-                    제안서 보내기
+                    모든 여행자 요청서 보기
                   </Link>
                 </div>
-              </article>
-            ))
+              )}
+            </>
           )
         )}
       </main>
