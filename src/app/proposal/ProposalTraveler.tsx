@@ -3,7 +3,24 @@
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useRequests, useRoots, Root } from "@/lib/api/queries.document";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRequests, useRoots, Root, useAcceptProposal } from "@/lib/api/queries.document";
+
+// 상태 배지 컴포넌트
+function StatusBadge({ status }: { status: "waiting" | "accepted" | "rejected" }) {
+  const statusConfig = {
+    waiting: { label: "대기중", color: "bg-green-100 text-green-700" },
+    accepted: { label: "수락됨", color: "bg-blue-100 text-blue-700" },
+    rejected: { label: "거절됨", color: "bg-gray-100 text-gray-700" },
+  };
+  
+  const config = statusConfig[status];
+  return (
+    <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${config.color}`}>
+      {config.label}
+    </span>
+  );
+}
 
 type TabKey = "recent" | "category" | "saved" | "confirmed" | "myRequests";
 
@@ -36,7 +53,20 @@ export default function ProposalTraveler() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("recent");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const { data: allRequests, isLoading: requestsLoading } = useRequests();
+  const { data: allRequests, isLoading: requestsLoading, refetch: refetchRequests } = useRequests();
+  
+  // 페이지 진입 시마다 데이터 리페치 (로컬의 응답 상태를 최신으로 유지)
+  useEffect(() => {
+    refetchRequests();
+  }, [refetchRequests]);
+  
+  // 주기적으로 데이터 리페치 (5초마다 - 로컬의 제안 응답 확인)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetchRequests();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [refetchRequests]);
 
   // localStorage에서 현재 로그인한 사용자 ID 가져오기
   useEffect(() => {
@@ -54,9 +84,16 @@ export default function ProposalTraveler() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  // 최근 받은 제안서 펼침 / 날짜 선택 상태
+  // 최근 받은 제안서 폈친 / 날짜 선택 상태
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<number>(4); // 11월 4일 기본 선택
+  
+  // 수락 핸들러: 제안 수락 시 "확정" 탭으로 이동
+  const handleAcceptProposal = (requestId: number) => {
+    alert("제안을 수락했습니다!");
+    // "확정" 탭으로 이동
+    setActiveTab("confirmed");
+  };
 
   return (
     <div className="mx-auto w-full max-w-[420px] bg-white pb-24">
@@ -109,15 +146,13 @@ export default function ProposalTraveler() {
         </nav>
       </header>
 
-      {/* 탭별 컨텐츠 */}
+      {/* 탭별 콘테츠 */}
       <main className="px-5 pt-4">
         {activeTab === "recent" && (
-          <RecentTab
-            proposals={MOCK_PROPOSALS}
-            expandedId={expandedId}
-            setExpandedId={setExpandedId}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
+          <LocalProposalsTab
+            requests={allRequests || []}
+            isLoading={requestsLoading}
+            onAcceptProposal={handleAcceptProposal}
           />
         )}
 
@@ -156,69 +191,58 @@ export default function ProposalTraveler() {
   );
 }
 
-/* =================== 최근 받은 제안서 탭 =================== */
+/* =================== 로컬의 제안(응답) 받은 제안서 탭 =================== */
 
-function RecentTab({
-  proposals,
-  expandedId,
-  setExpandedId,
-  selectedDate,
-  setSelectedDate,
+function LocalProposalsTab({
+  requests,
+  isLoading,
+  onAcceptProposal,
 }: {
-  proposals: Proposal[];
-  expandedId: number | null;
-  setExpandedId: (id: number | null) => void;
-  selectedDate: number;
-  setSelectedDate: (d: number) => void;
+  requests: any[];
+  isLoading: boolean;
+  onAcceptProposal?: (requestId: number) => void;
 }) {
-  // 일정 데이터 (지금은 11월 4일만 내용 있음)
-  const schedule = {
-    "04": [
-      {
-        timeLabel: "07:00",
-        order: 1,
-        title: "한식아침밥",
-        desc: "소개글",
-        bg: "#FFF3B8",
-      },
-      {
-        timeLabel: "10:00",
-        order: 2,
-        title: "국중박구경",
-        desc: "소개글",
-        bg: "#FFF3B8",
-      },
-      {
-        timeLabel: "12:00",
-        order: 3,
-        title: "",
-        desc: "해당 내용을 보려면 포인트가 필요합니다.",
-        bg: "#FFE7E7",
-      },
-    ],
-  } as Record<
-    string,
-    { timeLabel: string; order: number; title: string; desc: string; bg: string }[]
-  >;
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const router = useRouter();
+  const acceptProposal = useAcceptProposal();
+  const qc = useQueryClient();
+  
+  // 로컬의 제안(응답)을 받은 요청서만 추림
+  const proposalsWithResponses = (requests || []).filter((req: any) => {
+    const hasProposals = Array.isArray(req.proposals) && req.proposals.length > 0;
+    return hasProposals;
+  });
+  
+  const handleAcceptProposal = async (requestId: number, rootId: number) => {
+    try {
+      await acceptProposal.mutateAsync({ requestId, rootId });
+      // 수락 완료 후 데이터 재요청
+      await qc.invalidateQueries({ queryKey: ["requests"] });
+      onAcceptProposal?.(requestId);
+    } catch (error: any) {
+      console.error("수락 실패:", error);
+      alert("수락에 실패했습니다. " + (error?.response?.data?.error || ""));
+    }
+  };
+  
+  const queryClient = useQueryClient();
 
-  const dateItems = [
-    { day: 4, label: "04" },
-    { day: 5, label: "05" },
-    { day: 6, label: "06" },
-    { day: 7, label: "07" },
-  ];
+  if (isLoading) {
+    return (
+      <section className="pt-16 text-center">
+        <p className="text-[14px] text-[#555]">로딩 중...</p>
+      </section>
+    );
+  }
 
-  if (proposals.length === 0) {
+  if (proposalsWithResponses.length === 0) {
     return (
       <section className="pt-16">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
             <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
           </div>
-          <p className="text-[14px] text-[#555]">받은 제안서가 없습니다</p>
-          <button className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white">
-            제안서 요청하기
-          </button>
+          <p className="text-[14px] text-[#555]">로컬의 제안을 기다리는 중입니다</p>
         </div>
       </section>
     );
@@ -226,174 +250,70 @@ function RecentTab({
 
   return (
     <section className="pb-4">
-      {proposals.map((p) => {
-        const isExpanded = expandedId === p.id;
-        const scheduleKey = selectedDate.toString().padStart(2, "0");
+      {proposalsWithResponses.map((request: any) => {
+        const isExpanded = expandedId === request.id;
 
         return (
           <article
-            key={p.id}
-            className="border-b border-[#E5E5E5] py-4 last:border-b-0"
+            key={request.id}
+            className="border-b border-[#E5E5E5] py-4 last:border-b-0 cursor-pointer hover:bg-[#F9F9F9]"
+            onClick={() => setExpandedId(isExpanded ? null : request.id)}
           >
-            {/* 기본 요약 카드 부분 (클릭해서 펼치기) */}
-            <div
-              className="flex w-full cursor-pointer items-center gap-3"
-              onClick={() =>
-                setExpandedId(isExpanded ? null : p.id)
-              }
-            >
-              <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5]" />
-              <div className="flex-1">
-                <p className="text-[11px] text-[#888]">{p.category}</p>
-                <p className="mt-[2px] text-[14px] font-semibold text-[#111]">
-                  {p.title}
+            {/* 기본 욕맽 - 직접 제안으로 만든 요청서 정보 표시 */}
+            <div className="flex items-center gap-3">
+              <div className="h-[44px] w-[44px] rounded-full bg-[#E5E5E5] flex items-center justify-center text-white font-bold">
+                {request.user?.display_name?.charAt(0) || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[#111] truncate">
+                  {request.title || (typeof request.place === 'object' ? (request.place?.name || request.place?.city) : '여행지')}
                 </p>
-                <p className="mt-[2px] text-[12px] text-[#666]">{p.summary}</p>
-                <p className="mt-[4px] text-[11px] text-[#999]">
-                  {p.localName}
+                <p className="text-[12px] text-[#666] mt-1">
+                  {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
+                </p>
+                <p className="text-[11px] text-[#999] mt-1">
+                  {request.user?.display_name || '여행자'}
                 </p>
               </div>
-
-              {/* 장바구니 버튼 (button 중첩 방지 위해 div로 처리) */}
-              <div className="flex h-9 w-9 items-center justify-center">
-                <Image src="/cart.svg" alt="담기" width={36} height={36} />
-              </div>
+              <button className="text-[18px] text-gray-400">
+                {isExpanded ? '▲' : '▼'}
+              </button>
             </div>
 
-            {/* 펼쳐진 상세 영역 */}
-            {isExpanded && (
-              <div className="mt-4 space-y-4">
-                {/* 채팅 상담하기 버튼 */}
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-[#333]"
-                    style={{
-                      display: "flex",
-                      width: 131,
-                      height: 24,
-                      padding: "14px 15px",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      gap: 10,
-                      flexShrink: 0,
-                      borderRadius: 6,
-                      border: "1px solid rgba(0, 0, 0, 0.10)",
-                      background:
-                        "radial-gradient(631.95% 162.81% at -13.94% 100%, #F9D040 0%, #F6BB33 100%)",
-                    }}
-                  >
-                    채팅상담하기
-                  </button>
-                </div>
-
-                {/* 상단 이미지 2개 (매거진 + 지도) */}
-                <div className="space-y-3 border-t border-[#E5E5E5] ">
-                  <div className="mt-4 h-[150px] w-full overflow-hidden rounded-[6px] bg-[#E5E5E5]">
-                    <Image
-                      src="/megazine.png"
-                      alt="제안서 요약 이미지"
-                      width={800}
-                      height={400}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="h-[240px] w-full overflow-hidden rounded-[6px] bg-[#E5E5E5]">
-                    <Image
-                      src="/map.png"
-                      alt="지도"
-                      width={800}
-                      height={600}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                </div>
-
-                {/* 날짜 동그라미 (슬라이드 가능) */}
-                <div className="-mx-5 overflow-x-auto pb-2">
-                  <div className="flex gap-4 px-5">
-                    {dateItems.map((d) => {
-                      const active = selectedDate === d.day;
-                      return (
-                        <button
-                          key={d.day}
-                          type="button"
-                          onClick={() => setSelectedDate(d.day)}
-                          className={`flex h-[64px] w-[64px] flex-col items-center justify-center rounded-full text-[12px] ${
-                            active
-                              ? "bg-[#FFC727] text-black"
-                              : "bg-[#E5E5E5] text-black"
-                          }`}
-                        >
-                          <span>11월</span>
-                          <span className="text-[14px] font-bold">
-                            {d.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* 타임라인 구분선 */}
-                <div className="mt-1 border-t border-[#E5E5E5]" />
-
-                {/* 일정표 */}
-                <div className="mt-3 space-y-6 text-[12px] text-[#333]">
-                  {/* 06:00 라인만 구분선 */}
-                  <div className="flex items-start gap-4">
-                    <div className="w-[40px] text-right text-[12px] text-[#555]">
-                      06:00
-                    </div>
-                    <div className="mt-[10px] h-[1px] flex-1 bg-[#E5E5E5]" />
-                  </div>
-
-                  {schedule[scheduleKey]?.map((item) => (
-                    <div
-                      key={item.order}
-                      className="flex items-start gap-4"
-                    >
-                      {/* 시간 레이블 */}
-                      <div className="w-[40px] text-right text-[12px] text-[#555]">
-                        {item.timeLabel}
-                      </div>
-
-                      {/* 순번 + 내용 박스 */}
-                      <div className="flex-1">
-                        <div className="mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#FFC727] text-[11px] font-bold text-white">
-                          {item.order}
-                        </div>
-                        <div
-                          className="min-h-[72px] rounded-[4px] px-4 py-3"
-                          style={{ backgroundColor: item.bg }}
-                        >
-                          {item.title && (
-                            <p className="text-[13px] font-semibold text-[#333]">
-                              {item.title}
-                            </p>
-                          )}
-                          <p className="mt-1 text-[12px] text-[#555]">
-                            {item.desc}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* 마지막 13:00 끝시간 표기 */}
-                  <div className="flex items-start gap-4">
-                    <div className="w-[40px] text-right text-[12px] text-[#555]">
-                      13:00
+            {/* 폈춠진 상세 영역 - 로컬의 제안 내용 표시 */}
+            {isExpanded && request.proposals && request.proposals.length > 0 && (
+              <div className="mt-4 border-t border-[#E5E5E5] pt-4">
+                {request.proposals[0] && (
+                  <div className="p-3 bg-[#FFFBF0] rounded-lg">
+                    <p className="text-[13px] font-semibold text-[#333] mb-2">로컬의 제안</p>
+                    <p className="text-[12px] text-[#666] mb-2">
+                      로컬: {request.proposals[0].founder?.display_name || "로컬"}
+                    </p>
+                    <p className="text-[12px] text-[#666] mb-3">
+                      제안서: {request.proposals[0].title || "제목 없음"}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        className="flex-1 rounded-lg border-2 border-[#FFC727] bg-white py-2 text-[13px] font-semibold text-[#FFC727] hover:bg-[#FFFAF0]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/chat?rootId=${request.proposals[0].id}&requestId=${request.id}`);
+                        }}
+                      >
+                        채팅하기
+                      </button>
+                      <button
+                        className="flex-1 rounded-lg bg-[#FFC727] py-2 text-[13px] font-semibold text-white hover:bg-[#FFB700]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAcceptProposal(request.id, request.proposals[0].id);
+                        }}
+                      >
+                        수락하기
+                      </button>
                     </div>
                   </div>
-                </div>
-
-                {/* 제안서 구매 버튼 */}
-                <div className="mt-6">
-                  <button className="h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white">
-                    제안서 구매하기 (1000 포인트)
-                  </button>
-                </div>
+                )}
               </div>
             )}
           </article>
@@ -545,26 +465,37 @@ type PurchasedProposal = {
 
 function ConfirmedTab() {
   const router = useRouter();
-  const { data: allRoots, isLoading } = useRoots();
+  const { data: allRequests, isLoading } = useRequests();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
-  // localStorage에서 여행자 구매 날짜 가져오기
+  // localStorage에서 현재 사용자 ID 가져오기
   useEffect(() => {
     const userId = localStorage.getItem("user_id");
     setCurrentUserId(userId);
-    
-    // 구매된 제안서 ID 가져오기 (마기마일나 indexedDB, 또는 API로 관리)
-    const purchased = JSON.parse(localStorage.getItem("purchased_roots") || "[]");
-    setPurchasedRootIds(purchased);
   }, []);
   
-  const [purchasedRootIds, setPurchasedRootIds] = useState<number[]>([]);
-  
-  // 구매된 제안서만 필터링
-  const purchasedProposals = useMemo(() => {
-    if (!allRoots || purchasedRootIds.length === 0) return [];
-    return allRoots.filter((root: Root) => purchasedRootIds.includes(root.id));
-  }, [allRoots, purchasedRootIds]);
+  // 수락된 제안서 필터링 (acceptance=true인 RequestRootMap)
+  const confirmedProposals = useMemo(() => {
+    if (!allRequests || !currentUserId) return [];
+    
+    const confirmed: any[] = [];
+    allRequests.forEach((request: any) => {
+      // 현재 사용자의 요청서만
+      if (String(request.user.uuid) !== currentUserId) return;
+      
+      // 이 요청서에 대해 수락된 제안이 있는지 확인
+      if (Array.isArray(request.proposals) && request.proposals.length > 0) {
+        request.proposals.forEach((proposal: any) => {
+          // 백엔드에서 acceptance 필드가 온다면 사용
+          if (proposal.acceptance === true) {
+            confirmed.push(proposal);
+          }
+        });
+      }
+    });
+    
+    return confirmed;
+  }, [allRequests, currentUserId]);
   
   if (isLoading) {
     return (
@@ -574,14 +505,14 @@ function ConfirmedTab() {
     );
   }
   
-  if (purchasedProposals.length === 0) {
+  if (confirmedProposals.length === 0) {
     return (
       <section className="pt-16">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
             <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
           </div>
-          <p className="text-[14px] text-[#555]">구매된 제안서가 없습니다</p>
+          <p className="text-[14px] text-[#555]">확정된 제안서가 없습니다</p>
           <button 
             onClick={() => router.push('/proposal')}
             className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
@@ -595,7 +526,7 @@ function ConfirmedTab() {
   
   return (
     <section className="pb-4">
-      {purchasedProposals.map((proposal: Root) => (
+      {confirmedProposals.map((proposal: any) => (
         <article
           key={proposal.id}
           className="border-b border-[#E5E5E5] py-4 last:border-b-0"
@@ -642,6 +573,17 @@ function MyRequestsTab({
   isLoading: boolean;
 }) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [directIds, setDirectIds] = useState<number[]>([]);
+
+  // 직제 제안으로 생성된 요청서 ID 목록 로드
+  useEffect(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem("direct_requests") || "[]");
+      setDirectIds(Array.isArray(data) ? data : []);
+    } catch {
+      setDirectIds([]);
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -651,20 +593,21 @@ function MyRequestsTab({
     );
   }
 
-  if (requests.length === 0) {
+  // '내가 제안한 제안서' 탭에는 직제 제안(로컬 제안서에서 직접 제안하기로 만든 요청) + 아직 로컬 제안(응답)이 없는 것만 노출
+  const waitingDirect = (requests || []).filter((req: any) => {
+    const isDirect = directIds.includes(req.id) || !!req.root_id;
+    const hasProposals = Array.isArray(req.proposals) && req.proposals.length > 0;
+    return isDirect && !hasProposals;
+  });
+
+  if (waitingDirect.length === 0) {
     return (
       <section className="pt-16">
         <div className="flex flex-col items-center gap-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#FFC727]">
             <Image src="/icon_check.svg" alt="체크" width={32} height={32} />
           </div>
-          <p className="text-[14px] text-[#555]">제안한 요청서가 없습니다</p>
-          <button 
-            onClick={() => window.location.href = '/request'}
-            className="mt-2 h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
-          >
-            제안서 요청하기
-          </button>
+          <p className="text-[14px] text-[#555]">대기중인 직접 제안이 없습니다</p>
         </div>
       </section>
     );
@@ -672,7 +615,7 @@ function MyRequestsTab({
 
   return (
     <section className="pb-4">
-      {requests.map((request) => {
+      {waitingDirect.map((request) => {
         const isExpanded = expandedId === request.id;
         
         return (
@@ -687,9 +630,13 @@ function MyRequestsTab({
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
                   <p className="text-[14px] font-semibold text-[#111]">
-                    {request.title || `여행지 ID: ${request.place}`}
+                    {request.title || (typeof request.place === 'object' ? (request.place?.name || request.place?.city || request.place?.state || '여행지') : `여행지 ID: ${request.place}`)}
                   </p>
+                    {/* 상태 배지: 직제 제안 + 아직 로컬 응답 없음만 대기중 */}
+                    <StatusBadge status="waiting" />
+                  </div>
                   <p className="mt-1 text-[12px] text-[#666]">
                     {request.date}{request.end_date && ` ~ ${request.end_date}`} · {request.number_of_people}명
                   </p>
@@ -794,16 +741,22 @@ function MyRequestsTab({
                 </div>
                 
                 <div className="flex gap-2">
+                  {/* 채팅하기 버튼 */}
                   <button
-                    className="flex-1 rounded-lg bg-[#FFC727] py-2 text-[13px] font-semibold text-white"
-                    onClick={() => window.location.href = `/request/${request.id}/edit`}
+                    className="flex-1 rounded-lg border-2 border-[#FFC727] bg-white py-2 text-[13px] font-semibold text-[#FFC727] hover:bg-[#FFFAF0]"
+                    onClick={() => window.location.href = `/chat?requestId=${request.id}`}
                   >
-                    수정하기
+                    채팅하기
                   </button>
+                  {/* 수락하기 버튼 */}
                   <button
-                    className="flex-1 rounded-lg border border-gray-300 py-2 text-[13px] font-semibold text-gray-700"
+                    className="flex-1 rounded-lg bg-[#FFC727] py-2 text-[13px] font-semibold text-white hover:bg-[#FFB700]"
+                    onClick={() => {
+                      // TODO: 수락 API 연동 - RequestRootMap을 업데이트하기
+                      alert("수락 API 연동 예정입니다.");
+                    }}
                   >
-                    삭제하기
+                    수락하기
                   </button>
                 </div>
               </div>

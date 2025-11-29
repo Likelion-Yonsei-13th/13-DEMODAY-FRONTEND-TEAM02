@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useRoots } from "@/lib/api/queries.document";
-import RatingModal from "@/components/RatingModal";
 
 export default function LocalProposalsPage() {
   const router = useRouter();
   const { data: allRoots, isLoading } = useRoots();
-  const [selectedRootForRating, setSelectedRootForRating] = useState<any | null>(null);
-  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
 
   // 전체 로컬 제안서 데이터
   const proposals = useMemo(() => {
@@ -51,11 +48,14 @@ export default function LocalProposalsPage() {
                 key={root.id}
                 className={`border-b border-[#E5E5E5] py-4 ${idx === 0 ? "pt-0" : "pt-4"}`}
               >
-                {/* 제안서 기본 정보 (클릭 시 평점 표시) */}
-                <div className="flex items-center gap-3 mb-4">
-                  {/* 로컬 프로필 이미지 또는 이니셜 */}
+                {/* 제안서 기본 정보 (단순 리스트 뷰 - 클릭 시 줄드 상세페이지로) */}
+                <div 
+                  onClick={() => router.push(`/proposal/${root.id}`)}
+                  className="flex items-center gap-3 cursor-pointer hover:bg-[#F9F9F9] transition-colors px-1 py-2 rounded-[8px]"
+                >
+                  {/* 로컬 프로필 이미지 또는 이니셔 */}
                   <div className="h-[48px] w-[48px] rounded-full bg-[#E5E5E5] flex items-center justify-center text-[18px] font-bold text-white flex-shrink-0">
-                    {root.founder?.display_name?.charAt(0)?.toUpperCase() || "✢"}
+                    {root.founder?.display_name?.charAt(0)?.toUpperCase() || "\u2722"}
                   </div>
 
                   {/* 제안서 정보 */}
@@ -91,69 +91,12 @@ export default function LocalProposalsPage() {
                     className="rotate-180 flex-shrink-0"
                   />
                 </div>
-
-                {/* 평점 섹션 (펼쳐지는 부분) */}
-                <div className="rounded-[10px] border border-[#FFCC47] bg-white px-4 py-4 mb-4">
-                  <p className="mb-3 text-center text-[14px] font-bold text-[#333]">
-                    평점
-                  </p>
-
-                  {/* 별점 표시 */}
-                  <div className="flex justify-center gap-2 text-[20px] mb-3">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <span
-                        key={star}
-                        className={
-                          root.average_rating && star <= Math.round(root.average_rating)
-                            ? "text-[#FFC727]"
-                            : "text-[#E5E5E5]"
-                        }
-                      >
-                        ★
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* 평점 값 */}
-                  <p className="text-center text-[12px] text-[#666] mb-3">
-                    {root.average_rating ? `${root.average_rating}점` : "평점 없음"}
-                  </p>
-
-                  {/* 자세히 보기 버튼 */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedRootForRating(root);
-                        setIsRatingModalOpen(true);
-                      }}
-                      className="flex-1 rounded-full border border-[#FFCC47] bg-white px-3 py-2 text-[12px] font-medium text-[#FFCC47] hover:bg-[#FFFAF0]"
-                    >
-                      평점하기
-                    </button>
-                    <button
-                      onClick={() => router.push(`/proposal/${root.id}`)}
-                      className="flex-1 rounded-full bg-[#FFC727] px-3 py-2 text-[12px] font-medium text-white hover:bg-[#FFB700]"
-                    >
-                      자세히 보기
-                    </button>
-                  </div>
-                </div>
               </article>
             ))}
           </div>
         )}
       </main>
 
-      {/* 평점 모달 */}
-      <RatingModal
-        isOpen={isRatingModalOpen}
-        onClose={() => setIsRatingModalOpen(false)}
-        onConfirm={async () => {
-          return Promise.resolve();
-        }}
-        rootId={selectedRootForRating?.id || 0}
-        rootTitle={selectedRootForRating?.title}
-      />
     </div>
   );
 }

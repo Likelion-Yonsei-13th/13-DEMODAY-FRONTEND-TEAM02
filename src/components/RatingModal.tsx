@@ -51,8 +51,8 @@ export default function RatingModal({
   };
 
   const modal = (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
-      <div className="w-[300px] rounded-[16px] bg-white px-6 py-8 shadow-xl">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 overflow-hidden">
+      <div className="w-[320px] rounded-[16px] bg-white px-6 py-8 shadow-xl max-h-[90vh] overflow-y-auto">
         {/* 제목 */}
         <h2 className="text-center text-[18px] font-bold text-[#111] mb-6">
           평점을 남겨주세요
@@ -66,16 +66,17 @@ export default function RatingModal({
         )}
 
         {/* 별 5개 선택 */}
-        <div className="flex justify-center gap-3 mb-8">
+        <div className="flex justify-center gap-2 mb-8">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
               key={star}
               onClick={() => handleStarClick(star)}
-              className="transition-transform hover:scale-110"
+              className="transition-transform hover:scale-110 flex items-center justify-center border-2 border-black w-12 h-12"
               type="button"
+              style={{ padding: 0 }}
             >
               <span
-                className={`text-[40px] ${
+                className={`text-[32px] leading-none ${
                   rating && star <= rating ? "text-[#FFC727]" : "text-[#E5E5E5]"
                 }`}
               >

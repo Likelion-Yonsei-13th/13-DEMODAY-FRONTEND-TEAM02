@@ -195,7 +195,7 @@ export default function ProfileTraveler() {
       {/* ===== 구매한 제안서 ===== */}
       <section className="px-5 pt-10 pb-20">
         <div className="mb-3 flex items-baseline gap-2">
-          <h2 className="text-[18px] font-bold text-[#111]">\uad6c매한 제안서</h2>
+          <h2 className="text-[18px] font-bold text-[#111]">구매한 제안서</h2>
           <span className="text-[13px] font-semibold text-[#FFC727]">{purchasedProposals.length}개</span>
         </div>
 
@@ -236,14 +236,7 @@ export default function ProfileTraveler() {
                   평점을 남겨주세요
                 </p>
 
-                {/* 별점 선택 */}
-                <div className="flex justify-center gap-3 text-[28px]">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <span key={star} className="text-[#CCCCCC] cursor-pointer hover:text-[#FFC727]">
-                      ★
-                    </span>
-                  ))}
-                </div>
+                {/* 별점 선택 (숨김 - 모달에서만 표시) */}
 
                 <div className="mt-3 flex justify-center">
                   <button
@@ -259,18 +252,6 @@ export default function ProfileTraveler() {
               </div>
             </div>
           ))
-        )}
-
-        {/* 모든 로컬 제안서 보기 버튼 */}
-        {purchasedProposals.length > 0 && (
-          <div className="mt-6 mb-4">
-            <button
-              onClick={() => router.push('/local-proposals')}
-              className="h-11 w-full rounded-[4px] bg-gradient-to-r from-[#FFC727] to-[#FFB42B] text-[14px] font-semibold text-white"
-            >
-              모든 로컬 제안서 보기
-            </button>
-          </div>
         )}
       </section>
       

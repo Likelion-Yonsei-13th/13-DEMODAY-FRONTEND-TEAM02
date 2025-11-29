@@ -238,6 +238,22 @@ export function useDeleteRoot() {
   });
 }
 
+// ---- Proposal Acceptance ----
+export function useAcceptProposal() {
+  const qc = useQueryClient();
+  return useMutation<any, any, { requestId: number; rootId: number }>({
+    mutationFn: async ({ requestId, rootId }) => {
+      const { data } = await api.patch(
+        `/document/proposals/accept/?request_id=${requestId}&root_id=${rootId}`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["requests"] });
+    },
+  });
+}
+
 // ---- Image Upload for Root ----
 export function useUploadRootImage() {
   return useMutation<{ url: string; filename: string }, any, File>({

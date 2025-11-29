@@ -358,7 +358,13 @@ function LocalProposalSection({ region }: { region: { country?: string; state?: 
           <h2 className="text-[15px] font-bold text-gray-900">{sectionTitle}</h2>
           <button
             type="button"
-            onClick={() => router.push("/proposal")}
+            onClick={() => {
+              if (isUserRole) {
+                router.push("/local-proposals");
+              } else {
+                router.push("/proposal");
+              }
+            }}
             className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
           >
             {moreButtonText}

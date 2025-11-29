@@ -257,7 +257,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           </section>
         )}
 
-        {/* 제안서 구매 버튼 (작성자가 아닐 때만 표시) */}
+        {/* 제안서 구매/직접 제안 버튼 (작성자가 아닐 때만 표시) */}
         {!isOwner && (
           <section className="px-5 mt-8 mb-10">
             {isPurchased ? (
@@ -268,12 +268,22 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
                 구매 완료
               </button>
             ) : (
-              <button 
-                onClick={() => setIsPurchaseModalOpen(true)}
-                className="w-full h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold hover:bg-[#FFB700] transition-colors"
-              >
-                제안서 구매하기 (1000 포인트)
-              </button>
+              <div className="flex gap-3">
+                {/* 즜쪽: 직접 제안하기 */}
+                <button 
+                  onClick={() => router.push(`/request?rootId=${rootId}`)}
+                  className="flex-1 h-12 rounded-[6px] border-2 border-[#FFC727] bg-white text-[#FFC727] text-[15px] font-semibold hover:bg-[#FFFAF0] transition-colors"
+                >
+                  직접 제안하기
+                </button>
+                {/* 오른쪽: 구매하기 */}
+                <button 
+                  onClick={() => setIsPurchaseModalOpen(true)}
+                  className="flex-1 h-12 rounded-[6px] bg-[#FFC727] text-white text-[15px] font-semibold hover:bg-[#FFB700] transition-colors"
+                >
+                  구매하기
+                </button>
+              </div>
             )}
           </section>
         )}

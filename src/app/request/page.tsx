@@ -1,20 +1,40 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/nav/Navbar";
-import { useCreateRequest, useThemeTags } from "@/lib/api/queries.document";
+import { useCreateRequest, useThemeTags, useRootDetail } from "@/lib/api/queries.document";
 import { useSearchPlaces } from "@/lib/api/queries.place";
 
 export default function RequestPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rootId = searchParams.get("rootId");
   const createRequest = useCreateRequest();
   const { data: themeTags } = useThemeTags();
+  const { data: rootDetail } = useRootDetail(rootId ? parseInt(rootId) : null);
 
   // 날짜 관련
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  
+  // rootId가 있을 때 로컬 제안서 정보 기반으로 자동 설정
+  useEffect(() => {
+    if (rootId && rootDetail) {
+      // 로컬의 제안서 정보에서 장소 설정
+      if (rootDetail.place && typeof rootDetail.place === 'object') {
+        setSelectedCountry("KR");
+        setSelectedCity(rootDetail.place.state || "");
+        if (rootDetail.place.city) {
+          setSelectedDistricts([rootDetail.place.city]);
+        }
+      }
+      // 제목 미리 설정 (로컬 제안서 제목 기반)
+      const localName = rootDetail.founder?.display_name || "로컬";
+      setTitle(`${localName}의 제안서에 맞춤형 요청`);
+    }
+  }, [rootId, rootDetail]);
   
   // 제목
   const [title, setTitle] = useState<string>("");
@@ -156,7 +176,7 @@ export default function RequestPage() {
 
     try {
       // 첫 번째 place로 제출 (백엔드가 단일 place만 받음)
-      await createRequest.mutateAsync({
+      const payload: any = {
         title: title.trim(),
         place_id: selectedPlaceIds[0],
         date: startDate.toISOString().split('T')[0],
@@ -166,7 +186,22 @@ export default function RequestPage() {
         travel_type_ids: selectedTagIds,
         experience,
         is_public_profile: isPublicProfile,
-      });
+      };
+      
+      // rootId가 있으면 포함 (로컬 제안서에 대한 맞춤형 요청)
+      if (rootId) {
+        payload.root_id = parseInt(rootId);
+      }
+      
+      const created = await createRequest.mutateAsync(payload);
+      // 직제 제안하기로 생성된 경우, localStorage에 표시하여 여행자 탭에서 '대기중'으로만 노출
+      if (rootId && created?.id) {
+        const direct = JSON.parse(localStorage.getItem("direct_requests") || "[]");
+        if (!direct.includes(created.id)) {
+          direct.push(created.id);
+          localStorage.setItem("direct_requests", JSON.stringify(direct));
+        }
+      }
       alert("요청서가 성공적으로 제출되었습니다!");
       router.push("/proposal");
     } catch (error: any) {

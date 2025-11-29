@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Navbar from "@/components/nav/Navbar";
-import { useCreateRoot, useThemeTags, useUploadRootImage } from "@/lib/api/queries.document";
+import { useCreateRoot, useThemeTags, useUploadRootImage, useRequestDetail } from "@/lib/api/queries.document";
 import { useSearchPlaces } from "@/lib/api/queries.place";
 import api from "@/lib/api/axios-instance";
 
@@ -18,9 +18,12 @@ type ScheduleItem = {
 
 export default function ProposalSendPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestId = searchParams.get("requestId");
   const createRoot = useCreateRoot();
   const uploadImage = useUploadRootImage();
   const { data: themeTags } = useThemeTags();
+  const { data: requestDetail } = useRequestDetail(requestId ? parseInt(requestId) : null);
 
   // 제목
   const [title, setTitle] = useState<string>("");
@@ -89,6 +92,43 @@ export default function ProposalSendPage() {
   const [schedules, setSchedules] = useState<Record<number, ScheduleItem[]>>({
     1: [{ startTime: "09:00", endTime: "10:00", placeName: "", description: "" }],
   });
+  
+  // requestId가 있을 때 여행자의 요청 정보 기반으로 자동 설정
+  useEffect(() => {
+    if (requestId && requestDetail) {
+      // 제목 설정: 여행자 이름 + 요청 내용 기반
+      const userName = requestDetail.user?.display_name || "여행자";
+      setTitle(`${userName}님을 위한 맞춤형 제안서`);
+      
+      // 일정 기간 설정: 여행자의 여행 기간으로 자동 설정
+      if (requestDetail.date && requestDetail.end_date) {
+        const startDate = new Date(requestDetail.date);
+        const endDate = new Date(requestDetail.end_date);
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        setSelectedDays(Math.min(diffDays, 5)); // 최대 5일까지
+      } else if (requestDetail.date) {
+        setSelectedDays(1);
+      }
+      
+      // 지역 설정: 여행자의 지역에서 낰쯠 제안
+      if (requestDetail.place && typeof requestDetail.place === 'object') {
+        setSelectedCountry("KR");
+        setSelectedCity(requestDetail.place.state || "");
+        if (requestDetail.place.city) {
+          setSelectedDistricts([requestDetail.place.city]);
+        }
+      }
+      
+      // 추천 인삭 설정
+      setNumberOfPeople(requestDetail.number_of_people || 1);
+      
+      // 여행 스타일 태그 설정
+      if (requestDetail.travel_type && Array.isArray(requestDetail.travel_type)) {
+        setSelectedTagIds(requestDetail.travel_type.map((tag: any) => tag.id));
+      }
+    }
+  }, [requestId, requestDetail]);
   
   // 기타
   const [numberOfPeople, setNumberOfPeople] = useState<number>(1);
@@ -267,7 +307,15 @@ export default function ProposalSendPage() {
       }
       
       console.log("Submitting root payload:", payload);
-      await createRoot.mutateAsync(payload);
+      
+      // requestId가 있으면 proposal send 엔드포인트 사용 (요청에 대한 대답)
+      if (requestId) {
+        await api.post(`/document/proposals/send/?request_id=${requestId}`, payload);
+      } else {
+        // requestId가 없으면 일반 제안서 생성
+        await createRoot.mutateAsync(payload);
+      }
+      
       alert("제안서가 성공적으로 작성되었습니다!");
       router.push("/proposal");
     } catch (error: any) {
