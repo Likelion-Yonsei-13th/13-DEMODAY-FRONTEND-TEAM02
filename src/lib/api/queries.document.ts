@@ -122,6 +122,8 @@ export function useRequests(params?: {
       const { data } = await api.get(endpoints.document.requests, { params });
       return data?.results ?? data;
     },
+    staleTime: 0, // 항상 stale로 취급하여 자주 리페치
+    gcTime: 1000 * 60 * 5, // 5분 동안 캐시 유지
   });
 }
 
@@ -144,8 +146,11 @@ export function useCreateRequest() {
       const { data } = await api.post(endpoints.document.requests, input);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (createdRequest) => {
+      // 모든 requests 쿼리 무효화 (파라미터 상관없이)
       qc.invalidateQueries({ queryKey: ["requests"] });
+      // 생성된 요청을 캐시에 추가
+      qc.setQueryData(["request", createdRequest.id], createdRequest);
     },
   });
 }

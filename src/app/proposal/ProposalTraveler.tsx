@@ -55,16 +55,23 @@ export default function ProposalTraveler() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { data: allRequests, isLoading: requestsLoading, refetch: refetchRequests } = useRequests();
   
-  // 페이지 진입 시마다 데이터 리페치 (로컬의 응답 상태를 최신으로 유지)
+  // 페이지 진입 시 즉시 리페치
   useEffect(() => {
     refetchRequests();
   }, [refetchRequests]);
   
-  // 주기적으로 데이터 리페치 (5초마다 - 로컬의 제안 응답 확인)
+  // 탭이 변경될 때마다 리페치 (특히 myRequests 탭 이동 시)
+  useEffect(() => {
+    if (activeTab === "myRequests") {
+      refetchRequests();
+    }
+  }, [activeTab, refetchRequests]);
+  
+  // 주기적으로 데이터 리페치 (3초마다 - 로컬의 제안 응답 및 새 요청 확인)
   useEffect(() => {
     const interval = setInterval(() => {
       refetchRequests();
-    }, 5000);
+    }, 3000);
     return () => clearInterval(interval);
   }, [refetchRequests]);
 
